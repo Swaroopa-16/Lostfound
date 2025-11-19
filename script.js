@@ -1,5 +1,5 @@
 // IMPORTANT: Replace this with your Apps Script Web App URL
-const API_URL = "PASTE_YOUR_APPS_SCRIPT_URL_HERE";
+const API_URL = https://swaroopa-16.github.io/Lostfound/;
 
 // ----------- SUBMIT FORM -------------
 document.getElementById("itemForm").addEventListener("submit", async function(event) {

@@ -1,1 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campus Lost & Found</title>
+
+    <!-- Connect CSS -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <h1>Campus Lost & Found</h1>
+    <p>Report lost or found items</p>
+
+    <!-- FORM -->
+    <div class="card">
+        <h2>Submit Item</h2>
+
+        <form id="itemForm">
+
+            <label>Type</label>
+            <select id="type">
+                <option value="lost">Lost</option>
+                <option value="found">Found</option>
+            </select>
+
+            <label>Item Name</label>
+            <input id="item" placeholder="Example: Black Bag" required>
+
+            <label>Description</label>
+            <textarea id="description" placeholder="Color, brand, marks..."></textarea>
+
+            <label>Location</label>
+            <input id="location" placeholder="Where you lost/found it">
+
+            <label>Contact</label>
+            <input id="contact" placeholder="Phone or email">
+
+            <label>Date (optional)</label>
+            <input type="date" id="date_event">
+
+            <label>Your Name (optional)</label>
+            <input id="reporter" placeholder="Name">
+
+            <button type="submit">Submit</button>
+        </form>
+
+        <p id="msg"></p>
+    </div>
+
+    <!-- LIST -->
+    <div class="card">
+        <h2>All Items</h2>
+        <button onclick="loadItems()">Refresh</button>
+        <ul id="list"></ul>
+    </div>
+
+    <!-- Connect JS -->
+    <script src="script.js"></script>
+
+</body>
+</html>
 

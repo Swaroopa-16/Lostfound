@@ -2,7 +2,7 @@
 // Apps Script endpoint (must match the form action)
 const API_URL = "https://script.google.com/macros/s/AKfycbzcZZaOv5aeHTC8t7Zn8ze9CsNJ1wn3CzcJrMn_n041oFlVX9wnNSR7VWDl0_0eDJ-keA/exec";
 
-// Helper: JSONP loader
+
 function jsonpFetch(url) {
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');

@@ -1,113 +1,115 @@
-// ===============================
-// Lost & Found Apps Script (final)
-// JSONP GET + Form POST (with optional photo upload)
-// ===============================
+// JSONP + iframe-based POST approach (no CORS issues)
+// YOUR Apps Script URL:
+const API_URL = "https://script.google.com/macros/s/AKfycbzclTSeEeMwdtFt9q0sgorfOk4RFTcpigRt7XCRNJU2EbMzLMxWKtHCoFYv77pwtk-BEQ/exec";
 
-const SPREADSHEET_ID = '1WS8mln_1XQblT2rzOdHU8DGZRKsO3ZKty_UrUXBEEKw';
-const SHEET_NAME = 'Sheet1';
-
-// helper: return JSON ContentService
-function respondJSON(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
+// JSONP loader
+function jsonpFetch(url) {
+  return new Promise((resolve, reject) => {
+    const cb = "cb_" + Math.random().toString(36).substring(2);
+    const script = document.createElement("script");
+    window[cb] = (data) => {
+      resolve(data);
+      script.remove();
+      delete window[cb];
+    };
+    script.src = url + (url.indexOf('?') === -1 ? '?' : '&') + 'callback=' + cb;
+    script.onerror = () => {
+      reject(new Error('JSONP load error'));
+      script.remove();
+      try { delete window[cb]; } catch(e) {}
+    };
+    document.body.appendChild(script);
+  });
 }
 
-// get sheet safely
-function getSheet() {
-  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-  const sh = ss.getSheetByName(SHEET_NAME);
-  if (!sh) throw new Error('Sheet "' + SHEET_NAME + '" not found.');
-  return sh;
+function escapeHtml(s) {
+  if (!s) return "";
+  return String(s).replace(/[&<>"']/g, c =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
 
-// JSONP wrapper
-function jsonpResponse(e, obj) {
-  const callback = e && e.parameter && e.parameter.callback;
-  if (callback) {
-    return ContentService.createTextOutput(callback + "(" + JSON.stringify(obj) + ")")
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-  return respondJSON(obj);
-}
-
-// GET: return items (supports JSONP ?callback=fn)
-function doGet(e) {
+// Load items and render list with thumbnails
+async function loadItems() {
+  const list = document.getElementById("list");
+  list.innerHTML = "Loading...";
   try {
-    const sh = getSheet();
-    const data = sh.getDataRange().getValues();
-    if (!data || data.length < 2) {
-      return jsonpResponse(e, { success: true, items: [] });
+    const res = await jsonpFetch(API_URL);
+    if (!res || !res.success) {
+      list.innerHTML = "<li>No items or error</li>";
+      return;
     }
-    const headers = data[0];
-    const rows = data.slice(1);
-    // limit to last 500 rows
-    const recent = rows.length > 500 ? rows.slice(rows.length - 500) : rows;
-    const items = recent.map(r => {
-      const o = {};
-      headers.forEach((h, i) => o[h] = r[i]);
-      return o;
+    const items = res.items || [];
+    if (items.length === 0) {
+      list.innerHTML = "<li>No items yet</li>";
+      return;
+    }
+    list.innerHTML = "";
+    items.reverse().forEach(item => {
+      const li = document.createElement("li");
+      const photoHtml = item.photo_url ? `<a href="${item.photo_url}" target="_blank"><img src="${item.photo_url}" alt="photo"></a>` : '';
+      li.innerHTML = `
+        <strong>${escapeHtml(item.item)}</strong> (${escapeHtml(item.type)})<br>
+        ${escapeHtml(item.description)}<br>
+        <small>Location: ${escapeHtml(item.location)} | Contact: ${escapeHtml(item.contact)}</small>
+        ${photoHtml}
+      `;
+      list.appendChild(li);
     });
-    return jsonpResponse(e, { success: true, items: items });
   } catch (err) {
-    return jsonpResponse(e, { success: false, error: err.message });
+    list.innerHTML = "<li>Error loading items</li>";
+    console.error(err);
   }
 }
 
-// POST: accepts form-data (iframe) or JSON; supports photo dataURL in 'photo' field
-function doPost(e) {
-  try {
-    const sh = getSheet();
-    // detect form or JSON
-    let data = {};
-    if (e.postData && e.postData.type === 'application/json') {
-      data = JSON.parse(e.postData.contents || '{}');
-    } else {
-      data = e.parameter || {};
+// file -> base64 hidden field + preview
+(function wirePhotoInput(){
+  const photoFileInput = document.getElementById('photoFile');
+  const photoHiddenInput = document.getElementById('photo');
+  const photoPreview = document.getElementById('photoPreview');
+
+  if (!photoFileInput) return;
+
+  photoFileInput.addEventListener('change', function() {
+    const file = this.files && this.files[0];
+    if (!file) {
+      photoHiddenInput.value = '';
+      photoPreview.innerHTML = '';
+      return;
     }
 
-    // prepare row with photo_url column at end
-    const row = [
-      Utilities.getUuid(),
-      data.type || "",
-      data.item || "",
-      data.description || "",
-      data.location || "",
-      data.contact || "",
-      new Date().toISOString(),
-      data.date_event || "",
-      data.reporter || "",
-      "open",
-      "" // photo_url placeholder
-    ];
+    // preview
+    const readerP = new FileReader();
+    readerP.onload = function(e) {
+      photoPreview.innerHTML = `<img src="${e.target.result}" style="max-width:160px; max-height:120px; border-radius:6px;">`;
+    };
+    readerP.readAsDataURL(file);
 
-    // handle photo if present (data.photo = dataURL)
-    if (data.photo && typeof data.photo === 'string' && data.photo.indexOf('data:') === 0) {
-      try {
-        const m = data.photo.match(/^data:(.+);base64,(.*)$/);
-        if (m && m.length === 3) {
-          const mime = m[1];
-          const b64 = m[2];
-          const bytes = Utilities.base64Decode(b64);
-          const ext = mime.split('/')[1] || 'png';
-          const fname = (data.item ? data.item.replace(/[^\w\-]+/g, '_') : 'photo') + '.' + ext;
-          const blob = Utilities.newBlob(bytes, mime, fname);
-          const file = DriveApp.createFile(blob);
-          // try to make viewable
-          try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
-          row[row.length - 1] = file.getUrl();
-        }
-      } catch (photoErr) {
-        Logger.log('Photo handling error: ' + photoErr);
-        // continue without photo
-      }
-    }
+    // read as dataURL and put into hidden input
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      photoHiddenInput.value = e.target.result; // data:image/...;base64,...
+    };
+    reader.readAsDataURL(file);
+  });
+})();
 
-    // append the row
-    sh.appendRow(row);
+// Form submit UX: show submitting and refresh after iframe loads
+document.getElementById("itemForm").addEventListener("submit", function(e) {
+  const msg = document.getElementById("msg");
+  msg.textContent = "Submitting...";
+  const iframe = document.getElementById("post_target");
+  const listener = function() {
+    setTimeout(async () => {
+      msg.textContent = "Submitted!";
+      document.getElementById("itemForm").reset();
+      document.getElementById('photoPreview').innerHTML = '';
+      await loadItems();
+      iframe.removeEventListener("load", listener);
+      setTimeout(()=> msg.textContent = '', 2000);
+    }, 900);
+  };
+  iframe.addEventListener("load", listener);
+});
 
-    // return tiny HTML to iframe caller
-    return HtmlService.createHtmlOutput("OK");
-  } catch (err) {
-    return HtmlService.createHtmlOutput("ERROR: " + err.message);
-  }
-}
+// initial load
+loadItems();

@@ -9,8 +9,7 @@
 <body>
 
   <!-- LOGO -->
-  <!-- For GitHub: upload 0.png to your repo and use "0.png" -->
-<img src="cmrit_logo.webp" class="cmr-logo" alt="CMRIT logo">
+  <img src="cmrit_logo.webp" class="cmr-logo" alt="CMRIT logo">
 
   <header class="site-header">
     <div>
@@ -21,10 +20,9 @@
 
   <div class="card">
     <h2>Submit Item</h2>
-    <iframe name="post_target" id="post_target" style="display:none;"></iframe>
 
-    <form id="itemForm" method="POST" target="post_target"
-      action="https://script.google.com/macros/s/AKfycbx6aMps78bYxgr1l_t0Tf7hHrk-CkLINr1oL-aykJMZ5Igc6WANjvKGvui4HIAcX_CzQA/exec">
+    <!-- CLEAN, CORRECT FORM (NO target, NO action, NO iframe) -->
+    <form id="itemForm">
 
       <label>Type</label>
       <select name="type" id="type">
@@ -68,10 +66,6 @@
   </div>
 
   <script src="script.js"></script>
-
-  <script>
-    console.log("loadItems type:", typeof loadItems);
-  </script>
 
 </body>
 </html>

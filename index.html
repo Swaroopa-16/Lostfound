@@ -8,8 +8,8 @@
 </head>
 <body>
 
-  <!-- LOGO (use the uploaded file path or upload to repo and change path to 'cmrit_logo.webp') -->
-  <img src="/mnt/data/cmrit_logo.webp" class="cmr-logo" alt="CMRIT logo">
+  <!-- LOGO (must upload cmrit_logo.webp to repo root) -->
+  <img src="cmrit_logo.webp" class="cmr-logo" alt="CMRIT logo">
 
   <header class="site-header">
     <div>
@@ -73,5 +73,10 @@
   </div>
 
   <script src="script.js"></script>
+
+  <!-- DEBUG: shows whether loadItems function is loaded (remove later) -->
+  <script>
+    console.log('loadItems type ->', typeof loadItems);
+  </script>
 </body>
 </html>

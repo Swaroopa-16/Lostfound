@@ -1,112 +1,82 @@
-/* ===========================
-   GLOBAL PAGE STYLING
-   =========================== */
-
+/* BEAUTIFUL GRADIENT BACKGROUND */
 body {
-    font-family: Arial, sans-serif;
     margin: 0;
-    padding: 40px 20px;
-    background: url("https://images.unsplash.com/photo-1523050854058-8df90110c9f1")
-        no-repeat center center fixed;
-    background-size: cover;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #6e7bff, #9d4de6, #ff597d);
+    background-size: 400% 400%;
+    animation: bgMove 12s ease infinite;
+    color: #222;
 }
 
-/* ===========================
-   CMRIT LOGO (TOP LEFT)
-   =========================== */
-
-.cmr-logo {
-    position: fixed;
-    top: 18px;
-    left: 18px;
-    width: 120px;
-    height: auto;
-    z-index: 1000;
-    background: rgba(255, 255, 255, 0.7);
-    padding: 6px;
-    border-radius: 6px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+/* ANIMATED BACKGROUND */
+@keyframes bgMove {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
-/* ===========================
-   HEADER
-   =========================== */
-
-.site-header { text-align:center; margin-top:6px; }
-h1, h2 { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
-p { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
-
-/* ===========================
-   CARD / BOX STYLING
-   =========================== */
-
+/* WHITE GLASS BLUR CARDS */
 .card {
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     padding: 20px;
+    border-radius: 18px;
+    width: 85%;
+    max-width: 500px;
     margin: 20px auto;
-    width: 95%;
-    max-width: 560px;
-    border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
+    color: black;
 }
 
-/* ===========================
-   FORM ELEMENTS
-   =========================== */
+/* PAGE TITLE */
+.site-header h1 {
+    text-align: center;
+    color: white;
+    text-shadow: 2px 2px 15px rgba(0,0,0,0.6);
+}
 
-input, textarea, select, button {
+/* LOGO */
+.cmr-logo {
+    width: 100px;
+    margin: 15px;
+    display: block;
+}
+
+/* LIST ITEMS BEAUTIFUL */
+#list li {
+    background: rgba(255, 255, 255, 0.4);
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+}
+
+/* BUTTON STYLE */
+button {
+    padding: 10px;
+    width: 100%;
+    background: #3a0ca3;
+    border: none;
+    color: white;
+    font-size: 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #7209b7;
+}
+
+/* INPUTS & TEXTBOXES */
+input, select, textarea {
     width: 100%;
     padding: 10px;
-    margin-top: 6px;
     margin-bottom: 12px;
-    border: 1px solid #bbb;
-    border-radius: 5px;
-    font-size: 1rem;
-}
-
-textarea { height: 90px; }
-
-button {
-    background: #1d3557;
-    color: white;
+    border-radius: 10px;
     border: none;
-    cursor: pointer;
-    font-weight: bold;
-    padding: 12px;
-}
-button:hover { background: #457b9d; }
-
-/* ===========================
-   ITEM LIST
-   =========================== */
-
-ul { list-style: none; padding: 0; }
-li {
-    background: rgba(245,245,245,0.95);
-    padding: 12px;
-    margin-bottom: 10px;
-    border-radius: 8px;
-    border-left: 5px solid #1d3557;
-}
-
-/* thumbnail inside list */
-li img { max-width:120px; max-height:90px; display:block; margin-top:8px; border-radius:6px; }
-
-/* ===========================
-   RESPONSIVE
-   =========================== */
-
-@media (max-width: 600px) {
-    body { padding-top: 100px; }
-    .cmr-logo { width: 85px; top: 10px; left: 10px; padding: 4px; }
-    .card { width: 95%; }
-}
-/* force logo visible */
-.cmr-logo {
-  display: block !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  width: 120px !important;
-  height: auto !important;
-  z-index: 10000 !important;
+    outline: none;
+    background: rgba(255,255,255,0.65);
+    font-size: 14px;
 }

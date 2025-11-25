@@ -1,27 +1,31 @@
 // JSONP + iframe-based POST approach (no CORS issues)
-
-// Replace with your Apps Script URL (same as form action)
+// Apps Script endpoint (must match the form action)
 const API_URL = "https://script.google.com/macros/s/AKfycbzcZZaOv5aeHTC8t7Zn8ze9CsNJ1wn3CzcJrMn_n041oFlVX9wnNSR7VWDl0_0eDJ-keA/exec";
 
 // Helper: JSONP loader
-function jsonpFetch(url, callbackName) {
+function jsonpFetch(url) {
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
     const cb = 'cb_' + Math.random().toString(36).substring(2,10);
     window[cb] = function(data) {
       resolve(data);
-      // cleanup
       script.remove();
       try { delete window[cb]; } catch(e) { window[cb] = undefined; }
     };
     script.src = url + (url.indexOf('?') === -1 ? '?' : '&') + 'callback=' + cb;
-    script.onerror = function(e) {
+    script.onerror = function() {
       reject(new Error('JSONP load error'));
       script.remove();
       try { delete window[cb]; } catch(e) { window[cb] = undefined; }
     };
     document.body.appendChild(script);
   });
+}
+
+// Escape HTML
+function escapeHtml(s) {
+  if (!s) return '';
+  return s.toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 // Load items via JSONP
@@ -53,24 +57,16 @@ async function loadItems() {
   }
 }
 
-function escapeHtml(s) {
-  if (!s) return '';
-  return s.toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
 // Form submit UX: show submitting message and wait for iframe load
 document.getElementById('itemForm').addEventListener('submit', function(e) {
   const msg = document.getElementById('msg');
   msg.textContent = 'Submitting...';
-  // When iframe loads, assume success
   const iframe = document.getElementById('post_target');
   const onload = function() {
-    // small delay to allow Apps Script write to finish
     setTimeout(async () => {
       msg.textContent = 'Submitted successfully!';
       document.getElementById('itemForm').reset();
       await loadItems();
-      // cleanup listener so it doesn't fire repeatedly
       iframe.removeEventListener('load', onload);
       setTimeout(()=> msg.textContent = '', 2500);
     }, 700);

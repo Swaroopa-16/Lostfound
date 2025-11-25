@@ -8,8 +8,9 @@
 </head>
 <body>
 
-  <!-- LOGO (must upload cmrit_logo.webp to repo root) -->
-<img src="/mnt/data/cmrit_logo.webp" class="cmr-logo" alt="CMRIT logo">
+  <!-- LOGO -->
+  <!-- For GitHub: upload 0.png to your repo and use "0.png" -->
+  <img src="0.png" class="cmr-logo" alt="CMRIT logo">
 
   <header class="site-header">
     <div>
@@ -18,46 +19,41 @@
     </div>
   </header>
 
-  <!-- FORM CARD -->
   <div class="card">
     <h2>Submit Item</h2>
-
-    <!-- Hidden iframe target for form POST -->
     <iframe name="post_target" id="post_target" style="display:none;"></iframe>
 
-    <!-- Form posts to Apps Script (action must be your deployed /exec URL) -->
     <form id="itemForm" method="POST" target="post_target"
-          action="https://script.google.com/macros/s/AKfycbx6aMps78bYxgr1l_t0Tf7hHrk-CkLINr1oL-aykJMZ5Igc6WANjvKGvui4HIAcX_CzQA/exec">
-      
+      action="https://script.google.com/macros/s/AKfycbx6aMps78bYxgr1l_t0Tf7hHrk-CkLINr1oL-aykJMZ5Igc6WANjvKGvui4HIAcX_CzQA/exec">
+
       <label>Type</label>
       <select name="type" id="type">
-        <option value="lost">lost</option>
-        <option value="found">found</option>
+        <option value="lost">Lost</option>
+        <option value="found">Found</option>
       </select>
 
       <label>Item Name</label>
-      <input name="item" id="item" placeholder="Example: Black Bag" required>
+      <input name="item" id="item" required placeholder="Item name">
 
       <label>Description</label>
-      <textarea name="description" id="description" placeholder="Color, brand, marks..."></textarea>
+      <textarea name="description" id="description"></textarea>
 
       <label>Location</label>
-      <input name="location" id="location" placeholder="Where you lost/found it">
+      <input name="location" id="location">
 
       <label>Contact</label>
-      <input name="contact" id="contact" placeholder="Phone or email">
+      <input name="contact" id="contact">
 
-      <label>Date (optional)</label>
+      <label>Date</label>
       <input type="date" name="date_event" id="date_event">
 
-      <label>Your Name (optional)</label>
-      <input name="reporter" id="reporter" placeholder="Name">
+      <label>Your Name</label>
+      <input name="reporter" id="reporter">
 
-      <!-- Photo upload (optional) -->
       <label>Photo (optional)</label>
       <input type="file" id="photoFile" accept="image/*">
       <input type="hidden" name="photo" id="photo">
-      <div id="photoPreview" style="margin-bottom:12px;"></div>
+      <div id="photoPreview"></div>
 
       <button type="submit" id="submitBtn">Submit</button>
     </form>
@@ -65,7 +61,6 @@
     <p id="msg"></p>
   </div>
 
-  <!-- LIST CARD -->
   <div class="card">
     <h2>All Items</h2>
     <button onclick="loadItems()">Refresh</button>
@@ -74,9 +69,9 @@
 
   <script src="script.js"></script>
 
-  <!-- DEBUG: shows whether loadItems function is loaded (remove later) -->
   <script>
-    console.log('loadItems type ->', typeof loadItems);
+    console.log("loadItems type:", typeof loadItems);
   </script>
+
 </body>
 </html>

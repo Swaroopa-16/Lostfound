@@ -12,53 +12,52 @@
   <img src="cmrit_logo.webp" class="cmr-logo" alt="CMRIT logo">
 
   <header class="site-header">
-    <div>
-      <h1>Campus Lost & Found</h1>
-      <p>Report lost or found items</p>
-    </div>
+    <h1>Campus Lost & Found</h1>
+    <p>Report lost or found items</p>
   </header>
 
+  <!-- FORM CARD -->
   <div class="card">
     <h2>Submit Item</h2>
 
-    <!-- CLEAN, CORRECT FORM (NO target, NO action, NO iframe) -->
     <form id="itemForm">
 
       <label>Type</label>
-      <select name="type" id="type">
+      <select id="type" required>
         <option value="lost">Lost</option>
         <option value="found">Found</option>
       </select>
 
       <label>Item Name</label>
-      <input name="item" id="item" required placeholder="Item name">
+      <input id="item" required placeholder="Example: Black Bag">
 
       <label>Description</label>
-      <textarea name="description" id="description"></textarea>
+      <textarea id="description" placeholder="Color, brand, marks..."></textarea>
 
       <label>Location</label>
-      <input name="location" id="location">
+      <input id="location" placeholder="Where you lost/found it">
 
       <label>Contact</label>
-      <input name="contact" id="contact">
+      <input id="contact" placeholder="Phone or Email">
 
-      <label>Date</label>
-      <input type="date" name="date_event" id="date_event">
+      <label>Date (Optional)</label>
+      <input type="date" id="date_event">
 
       <label>Your Name</label>
-      <input name="reporter" id="reporter">
+      <input id="reporter" placeholder="Name">
 
-      <label>Photo (optional)</label>
+      <label>Photo (Optional)</label>
       <input type="file" id="photoFile" accept="image/*">
-      <input type="hidden" name="photo" id="photo">
+      <input type="hidden" id="photo">
       <div id="photoPreview"></div>
 
-      <button type="submit" id="submitBtn">Submit</button>
+      <button type="submit">Submit</button>
     </form>
 
     <p id="msg"></p>
   </div>
 
+  <!-- LIST CARD -->
   <div class="card">
     <h2>All Items</h2>
     <button onclick="loadItems()">Refresh</button>
@@ -66,6 +65,5 @@
   </div>
 
   <script src="script.js"></script>
-
 </body>
 </html>

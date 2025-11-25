@@ -5,12 +5,11 @@
 body {
     font-family: Arial, sans-serif;
     margin: 0;
-    padding: 40px 20px;   /* space for content + fixed logo */
+    padding: 40px 20px;
     background: url("https://images.unsplash.com/photo-1523050854058-8df90110c9f1")
         no-repeat center center fixed;
     background-size: cover;
 }
-
 
 /* ===========================
    CMRIT LOGO (TOP LEFT)
@@ -23,49 +22,33 @@ body {
     width: 120px;
     height: auto;
     z-index: 1000;
-
-    /* translucent white background for visibility */
     background: rgba(255, 255, 255, 0.7);
     padding: 6px;
     border-radius: 6px;
-
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-
 /* ===========================
-   HEADERS
+   HEADER
    =========================== */
 
-h1, h2 {
-    text-align: center;
-    color: #ffffff;
-    text-shadow: 0px 2px 4px rgba(0,0,0,0.4);
-}
-
-p {
-    text-align: center;
-    color: #ffffff;
-    font-size: 1.1rem;
-    text-shadow: 0px 2px 4px rgba(0,0,0,0.4);
-}
-
+.site-header { text-align:center; margin-top:6px; }
+h1, h2 { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
+p { color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }
 
 /* ===========================
    CARD / BOX STYLING
    =========================== */
 
 .card {
-    background: rgba(255, 255, 255, 0.88);
+    background: rgba(255, 255, 255, 0.92);
     padding: 20px;
     margin: 20px auto;
     width: 95%;
-    max-width: 480px;
-
+    max-width: 560px;
     border-radius: 12px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.18);
 }
-
 
 /* ===========================
    FORM ELEMENTS
@@ -76,15 +59,12 @@ input, textarea, select, button {
     padding: 10px;
     margin-top: 6px;
     margin-bottom: 12px;
-
     border: 1px solid #bbb;
     border-radius: 5px;
     font-size: 1rem;
 }
 
-textarea {
-    height: 80px;
-}
+textarea { height: 90px; }
 
 button {
     background: #1d3557;
@@ -92,48 +72,32 @@ button {
     border: none;
     cursor: pointer;
     font-weight: bold;
+    padding: 12px;
 }
-
-button:hover {
-    background: #457b9d;
-}
-
+button:hover { background: #457b9d; }
 
 /* ===========================
    ITEM LIST
    =========================== */
 
-ul {
-    list-style: none;
-    padding: 0;
-}
-
+ul { list-style: none; padding: 0; }
 li {
-    background: rgba(240, 240, 240, 0.9);
+    background: rgba(245,245,245,0.95);
     padding: 12px;
     margin-bottom: 10px;
     border-radius: 8px;
     border-left: 5px solid #1d3557;
 }
 
+/* thumbnail inside list */
+li img { max-width:120px; max-height:90px; display:block; margin-top:8px; border-radius:6px; }
 
 /* ===========================
-   RESPONSIVE FOR MOBILE
+   RESPONSIVE
    =========================== */
 
 @media (max-width: 600px) {
-    body {
-        padding-top: 100px;  /* ensure logo doesn't overlap text */
-    }
-
-    .cmr-logo {
-        width: 85px;
-        top: 10px;
-        left: 10px;
-        padding: 4px;
-    }
-
-    .card {
-        width: 95%;
-    }
+    body { padding-top: 100px; }
+    .cmr-logo { width: 85px; top: 10px; left: 10px; padding: 4px; }
+    .card { width: 95%; }
 }

@@ -1,35 +1,107 @@
+/* ===========================
+   GLOBAL PAGE STYLING
+   =========================== */
+
 body {
     font-family: Arial, sans-serif;
-    background: #f3f3f3;
-    padding: 20px;
+    margin: 0;
+    padding: 40px 20px;   /* space for content + fixed logo */
+    background: url("https://images.unsplash.com/photo-1523050854058-8df90110c9f1")
+        no-repeat center center fixed;
+    background-size: cover;
 }
+
+
+/* ===========================
+   CMRIT LOGO (TOP LEFT)
+   =========================== */
+
+.cmr-logo {
+    position: fixed;
+    top: 18px;
+    left: 18px;
+    width: 120px;
+    height: auto;
+    z-index: 1000;
+
+    /* translucent white background for visibility */
+    background: rgba(255, 255, 255, 0.7);
+    padding: 6px;
+    border-radius: 6px;
+
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+
+/* ===========================
+   HEADERS
+   =========================== */
 
 h1, h2 {
     text-align: center;
+    color: #ffffff;
+    text-shadow: 0px 2px 4px rgba(0,0,0,0.4);
 }
 
-.card {
-    background: white;
-    padding: 15px;
-    margin-top: 20px;
-    border-radius: 8px;
-    box-shadow: 0 0 5px rgba(0,0,0,0.1);
+p {
+    text-align: center;
+    color: #ffffff;
+    font-size: 1.1rem;
+    text-shadow: 0px 2px 4px rgba(0,0,0,0.4);
 }
+
+
+/* ===========================
+   CARD / BOX STYLING
+   =========================== */
+
+.card {
+    background: rgba(255, 255, 255, 0.88);
+    padding: 20px;
+    margin: 20px auto;
+    width: 95%;
+    max-width: 480px;
+
+    border-radius: 12px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+}
+
+
+/* ===========================
+   FORM ELEMENTS
+   =========================== */
 
 input, textarea, select, button {
     width: 100%;
-    padding: 8px;
+    padding: 10px;
     margin-top: 6px;
     margin-bottom: 12px;
-    border: 1px solid #ccc;
+
+    border: 1px solid #bbb;
     border-radius: 5px;
+    font-size: 1rem;
+}
+
+textarea {
+    height: 80px;
 }
 
 button {
-    background: black;
+    background: #1d3557;
     color: white;
+    border: none;
     cursor: pointer;
+    font-weight: bold;
 }
+
+button:hover {
+    background: #457b9d;
+}
+
+
+/* ===========================
+   ITEM LIST
+   =========================== */
 
 ul {
     list-style: none;
@@ -37,9 +109,31 @@ ul {
 }
 
 li {
-    background: #eaeaea;
-    padding: 10px;
-    margin-bottom: 8px;
-    border-radius: 6px;
+    background: rgba(240, 240, 240, 0.9);
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    border-left: 5px solid #1d3557;
 }
 
+
+/* ===========================
+   RESPONSIVE FOR MOBILE
+   =========================== */
+
+@media (max-width: 600px) {
+    body {
+        padding-top: 100px;  /* ensure logo doesn't overlap text */
+    }
+
+    .cmr-logo {
+        width: 85px;
+        top: 10px;
+        left: 10px;
+        padding: 4px;
+    }
+
+    .card {
+        width: 95%;
+    }
+}

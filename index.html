@@ -9,44 +9,41 @@
 <body>
 
   <!-- LOGO -->
-  <img src="cmrit_logo.webp" class="cmr-logo" alt="CMRIT logo">
+  <img src="logo.png" class="cmr-logo" alt="Campus Logo">
 
   <header class="site-header">
     <h1>Campus Lost & Found</h1>
     <p>Report lost or found items</p>
   </header>
 
-  <!-- FORM CARD -->
   <div class="card">
     <h2>Submit Item</h2>
 
     <form id="itemForm">
 
       <label>Type</label>
-      <select id="type" required>
+      <select id="type">
         <option value="lost">Lost</option>
         <option value="found">Found</option>
       </select>
 
       <label>Item Name</label>
-      <input id="item" required placeholder="Example: Black Bag">
+      <input id="item" required>
 
       <label>Description</label>
-      <textarea id="description" placeholder="Color, brand, marks..."></textarea>
+      <textarea id="description"></textarea>
 
       <label>Location</label>
-      <input id="location" placeholder="Where you lost/found it">
+      <input id="location">
 
       <label>Contact</label>
-      <input id="contact" placeholder="Phone or Email">
+      <input id="contact">
 
-      <label>Date (Optional)</label>
+      <label>Date</label>
       <input type="date" id="date_event">
 
       <label>Your Name</label>
-      <input id="reporter" placeholder="Name">
-
-
+      <input id="reporter">
 
       <button type="submit">Submit</button>
     </form>
@@ -54,7 +51,6 @@
     <p id="msg"></p>
   </div>
 
-  <!-- LIST CARD -->
   <div class="card">
     <h2>All Items</h2>
     <button onclick="loadItems()">Refresh</button>

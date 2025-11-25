@@ -1,6 +1,6 @@
 // JSONP + iframe-based POST approach (no CORS issues)
 // YOUR Apps Script URL:
-const API_URL = "https://script.google.com/macros/s/AKfycbzclTSeEeMwdtFt9q0sgorfOk4RFTcpigRt7XCRNJU2EbMzLMxWKtHCoFYv77pwtk-BEQ/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbx6aMps78bYxgr1l_t0Tf7hHrk-CkLINr1oL-aykJMZ5Igc6WANjvKGvui4HIAcX_CzQA/exec";
 
 // JSONP loader
 function jsonpFetch(url) {

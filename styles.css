@@ -101,3 +101,12 @@ li img { max-width:120px; max-height:90px; display:block; margin-top:8px; border
     .cmr-logo { width: 85px; top: 10px; left: 10px; padding: 4px; }
     .card { width: 95%; }
 }
+/* force logo visible */
+.cmr-logo {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: 120px !important;
+  height: auto !important;
+  z-index: 10000 !important;
+}

@@ -1,82 +1,94 @@
-/* BEAUTIFUL GRADIENT BACKGROUND */
+/* ================================
+   BLACK & WHITE THEME (FINAL)
+   ================================ */
+
+/* GLOBAL */
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #6e7bff, #9d4de6, #ff597d);
-    background-size: 400% 400%;
-    animation: bgMove 12s ease infinite;
-    color: #222;
-}
-
-/* ANIMATED BACKGROUND */
-@keyframes bgMove {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
-}
-
-/* WHITE GLASS BLUR CARDS */
-.card {
-    background: rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    padding: 20px;
-    border-radius: 18px;
-    width: 85%;
-    max-width: 500px;
-    margin: 20px auto;
-    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
-    color: black;
-}
-
-/* PAGE TITLE */
-.site-header h1 {
-    text-align: center;
-    color: white;
-    text-shadow: 2px 2px 15px rgba(0,0,0,0.6);
+    padding: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: #111;        /* Black background */
+    color: #eee;             /* White text */
 }
 
 /* LOGO */
 .cmr-logo {
-    width: 100px;
-    margin: 15px;
+    width: 110px;
+    margin: 20px auto;
     display: block;
+    filter: brightness(1.2);  /* look cleaner on dark bg */
 }
 
-/* LIST ITEMS BEAUTIFUL */
-#list li {
-    background: rgba(255, 255, 255, 0.4);
-    padding: 10px;
-    margin-bottom: 8px;
-    border-radius: 10px;
-    backdrop-filter: blur(10px);
+/* HEADER */
+.site-header {
+    text-align: center;
+    padding-bottom: 10px;
 }
 
-/* BUTTON STYLE */
-button {
-    padding: 10px;
-    width: 100%;
-    background: #3a0ca3;
-    border: none;
+.site-header h1 {
     color: white;
-    font-size: 16px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: 0.3s;
+    font-size: 28px;
+    letter-spacing: 1px;
 }
 
-button:hover {
-    background: #7209b7;
+.site-header p {
+    color: #bbb;
+    margin-top: -5px;
 }
 
-/* INPUTS & TEXTBOXES */
+/* CARDS (White boxes) */
+.card {
+    background: #ffffff;
+    color: #000000;
+    width: 88%;
+    max-width: 500px;
+    margin: 20px auto;
+    padding: 20px;
+    border-radius: 14px;
+    box-shadow: 0 0 12px rgba(255,255,255,0.1);
+}
+
+/* FORM LABELS */
+label {
+    font-weight: bold;
+    font-size: 14px;
+    color: #222;
+}
+
+/* INPUTS & TEXTAREAS */
 input, select, textarea {
     width: 100%;
     padding: 10px;
+    margin-top: 5px;
     margin-bottom: 12px;
-    border-radius: 10px;
-    border: none;
-    outline: none;
-    background: rgba(255,255,255,0.65);
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    background: #f5f5f5;
     font-size: 14px;
+    outline: none;
+    color: black;
 }
+
+textarea {
+    height: 80px;
+}
+
+/* BUTTON */
+button {
+    width: 100%;
+    padding: 12px;
+    background: #000000;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+button:hover {
+    background: #444444;
+}
+
+/* LIST ITEMS */
+#list {

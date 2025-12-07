@@ -1,14 +1,13 @@
-/* Typography & base */
+/* Visual refresh: pleasant background, neat cards, subtle shadows */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
 :root{
   --accent:#3bbf4a;
   --accent-2:#2ea43a;
-  --bg:#f5f7fa;
+  --bg:#f0f6fb;
   --card:#ffffff;
   --muted:#6b7280;
   --maxw:1100px;
   --radius:12px;
-  --glass: rgba(255,255,255,0.6);
   font-family: 'Inter', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   --shadow-1: 0 6px 24px rgba(18,25,40,0.06);
   --shadow-2: 0 10px 40px rgba(18,25,40,0.08);
@@ -17,11 +16,14 @@
 html,body{height:100%}
 body{
   margin:0;
-  background: linear-gradient(180deg,#eef3f7,#f9fbfc);
+  background:
+    radial-gradient(1200px 400px at 10% 10%, rgba(46,164,58,0.06), transparent 8%),
+    radial-gradient(900px 300px at 90% 90%, rgba(59,191,74,0.03), transparent 8%),
+    linear-gradient(180deg,#f7fbfd,#eef6fb);
   color:#0f1724;
   display:flex;
   justify-content:center;
-  padding:32px 18px;
+  padding:28px 18px;
   -webkit-font-smoothing:antialiased;
 }
 
@@ -32,6 +34,7 @@ body{
   display:flex;
   flex-direction:column;
   gap:18px;
+  padding:10px;
 }
 
 /* Header */
@@ -39,9 +42,9 @@ body{
   display:flex;
   align-items:center;
   gap:18px;
-  padding:18px;
+  padding:16px;
   border-radius:16px;
-  background: linear-gradient(90deg, rgba(255,255,255,0.7), rgba(255,255,255,0.85));
+  background: linear-gradient(90deg, rgba(255,255,255,0.8), rgba(255,255,255,0.95));
   box-shadow: var(--shadow-1);
   position:relative;
 }
@@ -62,7 +65,7 @@ body{
 .title{margin:0;font-size:20px;font-weight:700;letter-spacing:0.2px}
 .subtitle{margin:6px 0 0;color:var(--muted);font-size:13px}
 
-/* little badge on header */
+/* header badge */
 .header-badge{
   margin-left:auto;
   background: linear-gradient(180deg,var(--accent),var(--accent-2));
@@ -81,9 +84,7 @@ body{
   gap:18px;
   align-items:start;
 }
-@media(max-width:980px){
-  .container{grid-template-columns:1fr;}
-}
+@media(max-width:980px){ .container{grid-template-columns:1fr;} }
 
 /* Panel */
 .panel{
@@ -157,7 +158,7 @@ body{
 .field-row{display:flex;gap:12px}
 .field-col{flex:1;display:flex;flex-direction:column;gap:6px}
 label{font-size:13px;color:var(--muted);font-weight:600}
-input[type="text"], input[type="url"], textarea, select{
+input[type="text"], input[type="url"], textarea, select, input[type="date"]{
   padding:10px 12px;border-radius:10px;border:1px solid #eef2f6;background:#fff;font-size:14px;outline:none;
   transition: box-shadow .12s ease, transform .08s ease;
 }

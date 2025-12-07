@@ -4,59 +4,417 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Campus Lost & Found</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="description" content="Campus Lost & Found - report and browse items (Google Sheets backend)" />
+  <style>
+    /* --- Simple, responsive, clean styling --- */
+    :root{
+      --accent:#9fe23a;
+      --bg:#f7f7f8;
+      --card:#ffffff;
+      --muted:#666;
+      --maxw:980px;
+      --radius:12px;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing: border-box}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,#fbfbfc,#f1f3f4);
+      color:#222;
+      display:flex;
+      justify-content:center;
+      padding:28px 16px;
+      -webkit-font-smoothing:antialiased;
+    }
+    .wrap{
+      width:100%;
+      max-width:var(--maxw);
+    }
+    header{
+      display:flex;
+      align-items:center;
+      gap:16px;
+      margin-bottom:18px;
+    }
+    .logo{
+      width:68px;
+      height:68px;
+      border-radius:10px;
+      background:linear-gradient(135deg,#fff,#f3f3f5);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+      box-shadow:0 6px 18px rgba(10,10,10,0.06);
+      flex:0 0 68px;
+    }
+    .logo img{width:100%; height:100%; object-fit:cover; display:block}
+    .brand{
+      display:flex;
+      flex-direction:column;
+    }
+    .brand h1{margin:0; font-size:20px; letter-spacing:0.2px}
+    .brand p{margin:4px 0 0; color:var(--muted); font-size:13px}
+    .controls{
+      margin-top:12px;
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .container{
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:16px;
+      align-items:start;
+    }
+    @media(max-width:920px){
+      .container{grid-template-columns: 1fr; }
+    }
+
+    /* left: items list */
+    .panel{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:14px;
+      box-shadow:0 6px 30px rgba(20,20,20,0.04);
+    }
+    .search{
+      width:100%;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid #e6e6e9;
+      outline:none;
+      font-size:14px;
+      margin-bottom:12px;
+    }
+    .items-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill, minmax(240px,1fr));
+      gap:12px;
+    }
+    .card{
+      background:#fff;
+      border-radius:10px;
+      overflow:hidden;
+      border:1px solid #f0f0f2;
+      display:flex;
+      flex-direction:column;
+      min-height:220px;
+    }
+    .card .thumb{
+      width:100%;
+      height:140px;
+      background:linear-gradient(90deg,#f4f5f6,#fafafa);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+    .card .thumb img{width:100%; height:100%; object-fit:cover; display:block}
+    .card .body{
+      padding:10px 12px;
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .card h3{margin:0; font-size:15px}
+    .meta{font-size:13px; color:var(--muted); margin-top:auto}
+    .tag{
+      display:inline-block;
+      padding:4px 8px;
+      border-radius:999px;
+      background:#eefae3;
+      color:#2b5b09;
+      font-size:12px;
+      margin-right:6px;
+    }
+
+    /* right: form */
+    form .field{display:flex; flex-direction:column; gap:6px; margin-bottom:10px}
+    label{font-size:13px; color:var(--muted)}
+    input[type="text"], input[type="url"], textarea, select{
+      padding:10px 12px;
+      border-radius:8px;
+      border:1px solid #e6e6e9;
+      outline:none;
+      font-size:14px;
+      width:100%;
+      background:#fff;
+    }
+    textarea{min-height:90px; resize:vertical}
+    button{
+      background:linear-gradient(90deg,var(--accent), #7ad01e);
+      border:none;
+      color:#072;
+      padding:10px 14px;
+      border-radius:10px;
+      font-weight:600;
+      cursor:pointer;
+      box-shadow:0 8px 20px rgba(150,200,40,0.12);
+    }
+    .muted{color:var(--muted); font-size:13px}
+    .footer{margin-top:12px; font-size:13px; color:var(--muted)}
+    .placeholder-img{
+      width:80%;
+      opacity:0.6;
+      max-width:180px;
+    }
+    .error{color:#b00020}
+  </style>
 </head>
 <body>
+  <div class="wrap" role="main">
+    <header>
+      <div class="logo" id="logoWrap" title="Campus Lost & Found">
+        <!-- logo will be injected by JS (fallback capable) -->
+      </div>
+      <div class="brand">
+        <h1>Campus Lost & Found</h1>
+        <p>Report and recover lost items — powered by Google Sheets</p>
+        <div class="controls">
+          <small class="muted">Visible to everyone — keep contact details safe</small>
+        </div>
+      </div>
+    </header>
 
-  <!-- LOGO -->
-  <img src="logo.png" class="cmr-logo" alt="Campus Logo">
+    <div class="container">
+      <!-- LEFT: items -->
+      <section class="panel" aria-labelledby="itemsHeading">
+        <h2 id="itemsHeading" style="margin:0 0 10px">Available Items</h2>
+        <input id="searchBox" class="search" placeholder="Search by item, place or contact..." aria-label="Search items" />
+        <div id="itemsGrid" class="items-grid" aria-live="polite"></div>
+        <div id="itemsEmpty" class="muted" style="display:none; padding:12px">No items yet. Ask someone to add one or add an item using the form.</div>
+      </section>
 
-  <header class="site-header">
-    <h1>Campus Lost & Found</h1>
-    <p>Report lost or found items</p>
-  </header>
+      <!-- RIGHT: add item -->
+      <aside class="panel" aria-labelledby="addHeading">
+        <h3 id="addHeading">Add Lost / Found Item</h3>
+        <form id="itemForm" autocomplete="off">
+          <div class="field">
+            <label for="type">Type</label>
+            <select id="type" required>
+              <option value="Lost">Lost</option>
+              <option value="Found">Found</option>
+            </select>
+          </div>
 
-  <div class="card">
-    <h2>Submit Item</h2>
+          <div class="field">
+            <label for="title">Title (e.g., "Black Wallet")</label>
+            <input id="title" type="text" placeholder="Short title" required />
+          </div>
 
-    <form id="itemForm">
+          <div class="field">
+            <label for="desc">Description</label>
+            <textarea id="desc" placeholder="Detailed description (color, brand, marks)"></textarea>
+          </div>
 
-      <label>Type</label>
-      <select id="type">
-        <option value="lost">Lost</option>
-        <option value="found">Found</option>
-      </select>
+          <div class="field">
+            <label for="place">Place (where lost/found)</label>
+            <input id="place" type="text" placeholder="e.g., Library, Canteen" />
+          </div>
 
-      <label>Item Name</label>
-      <input id="item" required>
+          <div class="field">
+            <label for="date">Date (approx.)</label>
+            <input id="date" type="text" placeholder="2025-11-04 or 'Yesterday'"/>
+          </div>
 
-      <label>Description</label>
-      <textarea id="description"></textarea>
+          <div class="field">
+            <label for="imageUrl">Image URL (optional)</label>
+            <input id="imageUrl" type="url" placeholder="https://... (image must be public)" />
+            <small class="muted">If you don't have an image, leave blank.</small>
+          </div>
 
-      <label>Location</label>
-      <input id="location">
+          <div class="field">
+            <label for="contact">Contact (phone / email)</label>
+            <input id="contact" type="text" placeholder="Owner/finder contact" />
+          </div>
 
-      <label>Contact</label>
-      <input id="contact">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button type="submit">Submit</button>
+            <div id="submitMsg" class="muted" aria-live="polite"></div>
+          </div>
 
-      <label>Date</label>
-      <input type="date" id="date_event">
-
-      <label>Your Name</label>
-      <input id="reporter">
-
-      <button type="submit">Submit</button>
-    </form>
-
-    <p id="msg"></p>
+          <div class="footer">
+            <small>Note: Admins may verify entries. Avoid sharing private info publicly.</small>
+          </div>
+        </form>
+      </aside>
+    </div>
   </div>
 
-  <div class="card">
-    <h2>All Items</h2>
-    <button onclick="loadItems()">Refresh</button>
-    <ul id="list"></ul>
-  </div>
+  <script>
+    /* ----------------- CONFIG (edit these) ----------------- */
+    const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzclTSeEeMwdtFt9q0sgorfOk4RFTcpigRt7XCRNJU2EbMzLMxWKtHCoFYv77pwtk-BEQ/exec';
+    // path to logo in your repo - common locations: 'assets/logo.png' or 'logo.png'
+    const LOGO_PATH = 'assets/logo.png';
+    const LOGO_ALT_TEXT = 'CMRIT Logo';
+    /* ------------------------------------------------------- */
 
-  <script src="script.js"></script>
+    // small helpers
+    const $ = s => document.querySelector(s);
+    const itemsGrid = $('#itemsGrid');
+    const itemsEmpty = $('#itemsEmpty');
+    const searchBox = $('#searchBox');
+    const logoWrap = $('#logoWrap');
+
+    // 1) load logo with fallback
+    function loadLogo(){
+      const img = new Image();
+      img.src = LOGO_PATH;
+      img.alt = LOGO_ALT_TEXT;
+      img.onload = () => {
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        // remove any existing children
+        logoWrap.innerHTML = '';
+        logoWrap.appendChild(img);
+      };
+      img.onerror = () => {
+        // fallback: small inline SVG + text
+        logoWrap.innerHTML = `
+          <svg class="placeholder-img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="48" height="48" aria-hidden="true">
+            <rect width="64" height="64" rx="10" fill="#eaf9d6"/>
+            <g fill="#6f8a24">
+              <circle cx="20" cy="24" r="6"/>
+              <rect x="10" y="36" width="20" height="6" rx="2"/>
+              <path d="M40 18h14v28H40z" fill="#cbeaa6"/>
+              <circle cx="47" cy="30" r="3" fill="#6f8a24"/>
+            </g>
+          </svg>
+        `;
+      };
+    }
+
+    // 2) fetch items from apps script
+    async function fetchItems(){
+      try{
+        itemsGrid.innerHTML = '<div class="muted" style="padding:12px">Loading items...</div>';
+        const url = new URL(SHEET_API_URL);
+        // optional param to make it explicit
+        url.searchParams.set('action','getItems');
+        const res = await fetch(url.toString(), {cache: 'no-cache'});
+        if(!res.ok) throw new Error('Network response not ok: ' + res.status);
+        const data = await res.json();
+        // expected: data.items is array OR data is array
+        const items = Array.isArray(data) ? data : (data.items || []);
+        renderItems(items);
+      }catch(err){
+        console.error('Error fetching items:', err);
+        itemsGrid.innerHTML = `<div class="error" style="padding:12px">Could not load items. Check SHEET_API_URL or Apps Script deployment. (${err.message})</div>`;
+      }
+    }
+
+    // 3) render items to grid
+    function renderItems(items){
+      // normalize: each item should have title, description, place, date, imageUrl, type, contact
+      if(!items || items.length === 0){
+        itemsGrid.innerHTML = '';
+        itemsEmpty.style.display = 'block';
+        return;
+      }
+      itemsEmpty.style.display = 'none';
+      const query = searchBox.value.trim().toLowerCase();
+      const filtered = items.filter(it => {
+        const s = `${it.title||''} ${it.description||''} ${it.place||''} ${it.contact||''} ${it.type||''}`.toLowerCase();
+        return s.includes(query);
+      });
+      if(filtered.length === 0){
+        itemsGrid.innerHTML = `<div class="muted" style="padding:12px">No matches for "<strong>${escapeHtml(query)}</strong>"</div>`;
+        return;
+      }
+      itemsGrid.innerHTML = filtered.map(it => {
+        const img = it.imageUrl && it.imageUrl.trim() ? sanitizeUrl(it.imageUrl) : '';
+        const thumb = img ? `<img loading="lazy" src="${img}" alt="${escapeHtml(it.title||'item image')}" onerror="this.style.opacity=0.15; this.src='';">`
+                          : `<svg class="placeholder-img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#f5f6f7"/><g fill="#c7c9cc"><rect x="10" y="10" width="44" height="12" rx="3"/><rect x="10" y="28" width="44" height="26" rx="3"/></g></svg>`;
+        const typeTag = it.type === 'Found' ? `<span class="tag" style="background:#e8f6ff;color:#0b4f70">Found</span>` : `<span class="tag">Lost</span>`;
+        return `
+          <article class="card" role="article">
+            <div class="thumb">${thumb}</div>
+            <div class="body">
+              <div style="display:flex; gap:8px; align-items:center;">
+                ${typeTag}
+                <h3 style="flex:1">${escapeHtml(it.title || 'Untitled')}</h3>
+              </div>
+              <div style="color:var(--muted); font-size:13px">${escapeHtml(it.description || '')}</div>
+              <div class="meta">
+                <div>Place: ${escapeHtml(it.place||'—')}</div>
+                <div>Date: ${escapeHtml(it.date||'—')}</div>
+                <div>Contact: ${escapeHtml(it.contact||'—')}</div>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    // 4) form submission
+    const form = $('#itemForm');
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const btnMsg = $('#submitMsg');
+      btnMsg.textContent = 'Submitting...';
+      const payload = {
+        action: 'addItem',
+        timestamp: new Date().toISOString(),
+        type: $('#type').value,
+        title: $('#title').value.trim(),
+        description: $('#desc').value.trim(),
+        place: $('#place').value.trim(),
+        date: $('#date').value.trim(),
+        imageUrl: $('#imageUrl').value.trim(),
+        contact: $('#contact').value.trim()
+      };
+      try{
+        const res = await fetch(SHEET_API_URL, {
+          method: 'POST',
+          headers: {'Content-Type':'application/json'},
+          body: JSON.stringify(payload),
+          cache: 'no-cache'
+        });
+        if(!res.ok) throw new Error('Server error ' + res.status);
+        const data = await res.json();
+        if(data && data.success){
+          btnMsg.textContent = 'Added ✓';
+          // reset form partially
+          $('#title').value = '';
+          $('#desc').value = '';
+          $('#imageUrl').value = '';
+          $('#place').value = '';
+          $('#date').value = '';
+          $('#contact').value = '';
+          // reload items
+          setTimeout(()=>{ btnMsg.textContent = ''; fetchItems(); }, 700);
+        } else {
+          throw new Error(data && data.message ? data.message : 'Unknown response');
+        }
+      }catch(err){
+        console.error('Submit error', err);
+        btnMsg.textContent = 'Failed to submit';
+        alert('Failed to submit. Check SHEET_API_URL and Apps Script permissions.\n' + err.message);
+      }
+    });
+
+    // 5) search
+    searchBox.addEventListener('input', () => {
+      // re-render using cached items (we re-fetch on submit, so fetch once at load)
+      // We'll simply call fetchItems to keep logic simple
+      // but to reduce network calls we could cache server response.
+      fetchItems();
+    });
+
+    // simple sanitation helpers
+    function escapeHtml(str=''){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function sanitizeUrl(u=''){ try{ const url=new URL(u); return url.href }catch(e){ return ''; } }
+
+    // init
+    loadLogo();
+    fetchItems();
+
+    // expose renderItems to be callable by server-side image error fallback (optional)
+    window.renderItems = renderItems;
+  </script>
 </body>
 </html>

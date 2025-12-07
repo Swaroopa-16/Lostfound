@@ -1,77 +1,206 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbx6aMps78bYxgr1l_t0Tf7hHrk-CkLINr1oL-aykJMZ5Igc6WANjvKGvui4HIAcX_CzQA/exec";
+/* ------------------ CONFIG - EDIT THESE ------------------ */
+// Paste your Apps Script /exec URL here (must be deployed as Web App -> Execute as: Me, Who has access: Anyone)
+const SHEET_API_URL = 'https://script.google.com/macros/s/REPLACE_WITH_YOUR_SCRIPT_ID/exec';
 
-function escapeHtml(s) {
-  return s ? s.replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c])) : "";
+// Path to logo inside your repo (relative) or raw GitHub URL.
+// Example relative: 'assets/cmrit_logo.webp' or 'cmrit_logo.webp'
+// Example raw GitHub: 'https://raw.githubusercontent.com/username/repo/branch/assets/cmrit_logo.webp'
+const LOGO_PATH = 'assets/cmrit_logo.webp';
+
+const LOGO_ALT_TEXT = 'Campus Logo';
+/* -------------------------------------------------------- */
+
+const itemsGrid = document.getElementById('itemsGrid');
+const itemsEmpty = document.getElementById('itemsEmpty');
+const searchBox = document.getElementById('searchBox');
+const logoWrap = document.getElementById('logoWrap');
+
+let cachedItems = [];
+
+// --- Logo loader with robust fallback ---
+function loadLogo(){
+  // Remove any previous children (safety)
+  logoWrap.innerHTML = '';
+
+  if(!LOGO_PATH || LOGO_PATH.includes('REPLACE_WITH')){
+    // show fallback immediately
+    logoWrap.innerHTML = inlineSvgLogo();
+    return;
+  }
+
+  const img = new Image();
+  img.alt = LOGO_ALT_TEXT;
+  img.onload = () => {
+    img.style.width = '100%';
+    img.style.height = '100%';
+    img.style.objectFit = 'contain';
+    logoWrap.innerHTML = '';
+    logoWrap.appendChild(img);
+  };
+  img.onerror = () => {
+    logoWrap.innerHTML = inlineSvgLogo();
+  };
+  // set src last
+  img.src = LOGO_PATH;
 }
 
-function jsonpFetch(url) {
-  return new Promise((resolve, reject) => {
-    const cb = "cb_" + Math.random().toString(36).substring(2);
-    window[cb] = (data) => {
-      resolve(data);
-      delete window[cb];
-      document.getElementById(cb)?.remove();
-    };
-    const script = document.createElement("script");
-    script.id = cb;
-    script.src = url + (url.includes("?")?"&":"?") + "callback=" + cb;
-    script.onerror = reject;
-    document.body.appendChild(script);
-  });
+function inlineSvgLogo(){
+  return `<svg class="placeholder-img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="48" height="48" aria-hidden="true">
+    <rect width="64" height="64" rx="10" fill="#eaf9d6"/>
+    <g fill="#6f8a24">
+      <circle cx="20" cy="24" r="6"/>
+      <rect x="10" y="36" width="20" height="6" rx="2"/>
+      <path d="M40 18h14v28H40z" fill="#cbeaa6"/>
+      <circle cx="47" cy="30" r="3" fill="#6f8a24"/>
+    </g>
+  </svg>`;
 }
 
-async function loadItems() {
-  const list = document.getElementById("list");
-  list.innerHTML = "Loading...";
-
-  try {
-    const res = await jsonpFetch(API_URL);
-    if (!res.success) return list.innerHTML = "<li>Error loading</li>";
-
-    list.innerHTML = "";
-    res.items.reverse().forEach(item => {
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <strong>${escapeHtml(item.item)}</strong> (${escapeHtml(item.type)})<br>
-        ${escapeHtml(item.description)}<br>
-        <small>
-          Location: ${escapeHtml(item.location)} |
-          Contact: ${escapeHtml(item.contact)} |
-          Posted: ${escapeHtml(item.date_reported)}
-        </small>
-      `;
-      list.appendChild(li);
-    });
-
-  } catch (e) {
-    list.innerHTML = "<li>Error loading items</li>";
+// --- Fetch items from Apps Script (GET) ---
+async function fetchItems(){
+  itemsGrid.innerHTML = '<div class="muted" style="padding:12px">Loading items...</div>';
+  try{
+    if(!SHEET_API_URL || SHEET_API_URL.includes('REPLACE_WITH')){
+      throw new Error('SHEET_API_URL not set. Edit script.js and paste your Web App /exec URL.');
+    }
+    const url = new URL(SHEET_API_URL);
+    url.searchParams.set('action', 'getItems');
+    const res = await fetch(url.toString(), { cache: 'no-cache' });
+    if(!res.ok) throw new Error('Network response not ok: ' + res.status);
+    const json = await res.json();
+    // Accept either raw array (older script) or {success:true, items: []}
+    const items = Array.isArray(json) ? json : (json.items || []);
+    cachedItems = items.map(normalizeItem);
+    renderItems();
+  } catch(err){
+    console.error('Error fetching items:', err);
+    itemsGrid.innerHTML = `<div class="error" style="padding:12px">Could not load items. ${escapeHtml(err.message)}</div>`;
   }
 }
 
-document.getElementById("itemForm").addEventListener("submit", function (e) {
-  e.preventDefault();
-  const msg = document.getElementById("msg");
-  msg.textContent = "Submitting...";
-
-  const params = {
-    type: type.value,
-    item: item.value,
-    description: description.value,
-    location: location.value,
-    contact: contact.value,
-    date_event: date_event.value,
-    reporter: reporter.value
+// Normalize different header casing and shapes
+function normalizeItem(raw){
+  const it = {};
+  Object.keys(raw || {}).forEach(k => it[k.trim()] = String(raw[k] || '').trim());
+  return {
+    title: it.title || it.Title || it.NAME || it.name || '',
+    description: it.description || it.Description || it.desc || '',
+    place: it.place || it.Place || '',
+    date: it.date || it.Date || '',
+    imageUrl: it.imageUrl || it.imageURL || it.Image || '',
+    contact: it.contact || it.Contact || '',
+    type: it.type || it.Type || '',
+    raw: it
   };
+}
 
-  const query = Object.entries(params)
-    .map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
-
-  jsonpFetch(API_URL + "?" + query)
-    .then(res => {
-      msg.textContent = res.success ? "Submitted!" : "Failed";
-      document.getElementById("itemForm").reset();
-      loadItems();
+// --- Render using cachedItems and search input ---
+function renderItems(){
+  const query = searchBox.value.trim().toLowerCase();
+  if(!cachedItems || cachedItems.length === 0){
+    itemsGrid.innerHTML = '';
+    itemsEmpty.style.display = 'block';
+    return;
+  }
+  itemsEmpty.style.display = 'none';
+  const filtered = cachedItems.filter(it => {
+    const s = `${it.title} ${it.description} ${it.place} ${it.contact} ${it.type}`.toLowerCase();
+    return s.includes(query);
+  });
+  if(filtered.length === 0){
+    itemsGrid.innerHTML = `<div class="muted" style="padding:12px">No matches for "<strong>${escapeHtml(query)}</strong>"</div>`;
+    return;
+  }
+  itemsGrid.innerHTML = filtered.map(it => cardHtml(it)).join('');
+  // attach image error handlers
+  document.querySelectorAll('.card .thumb img').forEach(img => {
+    img.addEventListener('error', ()=> {
+      img.style.display = 'none';
+      const parent = img.parentElement;
+      if(parent && !parent.querySelector('svg')) parent.insertAdjacentHTML('beforeend', placeholderSvgHtml());
     });
+  });
+}
+
+function cardHtml(it){
+  const imgUrl = sanitizeUrl(it.imageUrl);
+  const thumb = imgUrl ? `<img loading="lazy" src="${imgUrl}" alt="${escapeHtml(it.title||'item')}">` : placeholderSvgHtml();
+  const tag = (it.type && it.type.toLowerCase() === 'found') ? `<span class="tag" style="background:#e8f6ff;color:#0b4f70">Found</span>` : `<span class="tag">Lost</span>`;
+  return `
+    <article class="card" role="article">
+      <div class="thumb">${thumb}</div>
+      <div class="body">
+        <div style="display:flex; gap:8px; align-items:center;">
+          ${tag}
+          <h3 style="flex:1">${escapeHtml(it.title || 'Untitled')}</h3>
+        </div>
+        <div style="color:var(--muted); font-size:13px">${escapeHtml(it.description || '')}</div>
+        <div class="meta">
+          <div>Place: ${escapeHtml(it.place||'—')}</div>
+          <div>Date: ${escapeHtml(it.date||'—')}</div>
+          <div>Contact: ${escapeHtml(it.contact||'—')}</div>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function placeholderSvgHtml(){
+  return `<svg class="placeholder-img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#f5f6f7"/><g fill="#c7c9cc"><rect x="10" y="10" width="44" height="12" rx="3"/><rect x="10" y="28" width="44" height="26" rx="3"/></g></svg>`;
+}
+
+// --- Form submit (urlencoded) ---
+const formEl = document.getElementById('itemForm');
+if(formEl){
+  formEl.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const submitMsg = document.getElementById('submitMsg');
+    submitMsg.textContent = 'Submitting...';
+    // build payload
+    const payload = {
+      timestamp: new Date().toISOString(),
+      type: document.getElementById('type').value,
+      title: document.getElementById('title').value.trim(),
+      description: document.getElementById('desc').value.trim(),
+      place: document.getElementById('place').value.trim(),
+      date: document.getElementById('date').value.trim(),
+      imageUrl: document.getElementById('imageUrl').value.trim(),
+      contact: document.getElementById('contact').value.trim()
+    };
+    try{
+      if(!SHEET_API_URL || SHEET_API_URL.includes('REPLACE_WITH')) throw new Error('SHEET_API_URL not configured in script.js');
+      const params = new URLSearchParams();
+      Object.keys(payload).forEach(k => params.append(k, payload[k] || ''));
+      const res = await fetch(SHEET_API_URL, { method: 'POST', body: params, cache: 'no-cache' });
+      if(!res.ok) throw new Error('Network response not ok: ' + res.status);
+      const data = await res.json();
+      if(data && (data.success === true || data === true)){
+        submitMsg.textContent = 'Added ✓';
+        formEl.reset();
+        // refresh after slight delay
+        setTimeout(()=>{ submitMsg.textContent=''; fetchItems(); }, 700);
+      } else {
+        throw new Error((data && data.message) ? data.message : 'Unknown server response');
+      }
+    } catch(err){
+      console.error('Submit error', err);
+      submitMsg.textContent = 'Failed to submit';
+      alert('Failed to submit. Check SHEET_API_URL and Apps Script deployment.\n' + err.message);
+    }
+  });
+}
+
+// --- Search (debounced) ---
+let searchTimer = 0;
+searchBox.addEventListener('input', ()=> {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(renderItems, 150);
 });
 
-loadItems();
+// --- Small utilities ---
+function escapeHtml(str=''){ return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function sanitizeUrl(u=''){ try{ if(!u) return ''; const url = new URL(u); return url.href; }catch(e){ return ''; } }
+
+// --- Init ---
+loadLogo();
+fetchItems();

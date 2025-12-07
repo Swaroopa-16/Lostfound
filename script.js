@@ -5,7 +5,7 @@
 
 /* ------------------ CONFIG - DO NOT EDIT UNLESS NEEDED ------------------ */
 // Your Apps Script /exec URL (you provided this)
-const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzclTSeEeMwdtFt9q0sgorfOk4RFTcpigRt7XCRNJU2EbMzLMxWKtHCoFYv77pwtk-BEQ/exec';
+const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbw33RvD6HF4zognGBKK9PhLn5zSTiQFhsgEYqG4louIt71zhT4e5n-p7KOx467fHbiaVQ/exec';
 
 // Logo path in repo root
 const LOGO_PATH = 'cmrit_logo.webp';

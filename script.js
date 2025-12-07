@@ -1,6 +1,6 @@
 /* ------------------ CONFIG - EDIT THESE ------------------ */
 // Paste your Apps Script /exec URL here (must be deployed as Web App -> Execute as: Me, Who has access: Anyone)
-const SHEET_API_URL = 'https://script.google.com/macros/s/REPLACE_WITH_YOUR_SCRIPT_ID/exec';
+const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzclTSeEeMwdtFt9q0sgorfOk4RFTcpigRt7XCRNJU2EbMzLMxWKtHCoFYv77pwtk-BEQ/exec';
 
 // Path to logo inside your repo (relative) or raw GitHub URL.
 // Example relative: 'assets/cmrit_logo.webp' or 'cmrit_logo.webp'

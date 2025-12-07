@@ -57,10 +57,19 @@
             </div>
           </div>
 
-          <div class="field">
-            <label for="title">Title (e.g., "Black Wallet")</label>
-            <input id="title" type="text" placeholder="Short title" required />
-          </div>
+         <div class="field">
+  <label for="imageFile">Image (upload or paste URL)</label>
+
+  <!-- direct upload input -->
+  <input id="imageFile" type="file" accept="image/*" />
+
+  <!-- fallback / shows resulting uploaded URL -->
+  <input id="imageUrl" type="url" placeholder="Or paste public image URL (optional)" />
+  <small class="muted">Upload from device or paste an image URL. Uploaded files will be stored in Drive and auto-filled above.</small>
+
+  <!-- small status indicator -->
+  <div id="uploadStatus" class="muted" style="margin-top:8px"></div>
+</div>
 
           <div class="field">
             <label for="desc">Description</label>

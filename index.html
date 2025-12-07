@@ -5,37 +5,56 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Campus Lost & Found</title>
   <meta name="description" content="Campus Lost & Found - report and browse items (Google Sheets backend)" />
+  <!-- Google font for a professional look -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="wrap" role="main">
-    <header>
+    <header class="site-header">
       <div class="logo" id="logoWrap" title="Campus Lost & Found" aria-hidden="false">
         <!-- script.js will insert logo or fallback -->
       </div>
       <div class="brand">
-        <h1>Campus Lost & Found</h1>
-        <p class="muted">Report and recover lost items — powered by Google Sheets</p>
+        <h1 class="title">Campus Lost & Found</h1>
+        <p class="subtitle">Report • Discover • Reunite — simple, fast, and reliable</p>
       </div>
+      <div class="header-badge" aria-hidden="true">Student Project</div>
     </header>
 
     <main class="container">
       <section class="panel" aria-labelledby="itemsHeading">
-        <h2 id="itemsHeading">Available Items</h2>
+        <div class="panel-head">
+          <h2 id="itemsHeading" class="panel-title">Available Items</h2>
+          <p class="panel-sub muted">Browse recent lost &amp; found items on campus</p>
+        </div>
+
         <input id="searchBox" class="search" placeholder="Search by item, place or contact..." aria-label="Search items" />
+
         <div id="itemsGrid" class="items-grid" aria-live="polite"></div>
-        <div id="itemsEmpty" class="muted" style="display:none; padding:12px">No items yet. Add one using the form.</div>
+        <div id="itemsEmpty" class="muted empty-note" style="display:none; padding:12px">No items yet. Add one using the form.</div>
       </section>
 
       <aside class="panel" aria-labelledby="addHeading">
-        <h3 id="addHeading">Add Lost / Found Item</h3>
-        <form id="itemForm" autocomplete="off">
-          <div class="field">
-            <label for="type">Type</label>
-            <select id="type" required>
-              <option value="Lost">Lost</option>
-              <option value="Found">Found</option>
-            </select>
+        <div class="panel-head">
+          <h3 id="addHeading" class="panel-title">Add Lost / Found Item</h3>
+          <p class="panel-sub muted">Fill the form — admins will verify entries</p>
+        </div>
+
+        <form id="itemForm" autocomplete="off" class="item-form">
+          <div class="field-row">
+            <div class="field-col">
+              <label for="type">Type</label>
+              <select id="type" required>
+                <option value="Lost">Lost</option>
+                <option value="Found">Found</option>
+              </select>
+            </div>
+
+            <div class="field-col">
+              <label for="date">Date</label>
+              <input id="date" type="text" placeholder="YYYY-MM-DD or 'Yesterday'"/>
+            </div>
           </div>
 
           <div class="field">
@@ -48,36 +67,39 @@
             <textarea id="desc" placeholder="Detailed description (color, brand, marks)"></textarea>
           </div>
 
-          <div class="field">
-            <label for="place">Place (where lost/found)</label>
-            <input id="place" type="text" placeholder="e.g., Library, Canteen" />
-          </div>
-
-          <div class="field">
-            <label for="date">Date (approx.)</label>
-            <input id="date" type="text" placeholder="2025-11-04 or 'Yesterday'"/>
+          <div class="field-row">
+            <div class="field-col">
+              <label for="place">Place (where lost/found)</label>
+              <input id="place" type="text" placeholder="e.g., Library, Canteen" />
+            </div>
+            <div class="field-col">
+              <label for="contact">Contact (phone / email)</label>
+              <input id="contact" type="text" placeholder="Owner/finder contact" />
+            </div>
           </div>
 
           <div class="field">
             <label for="imageUrl">Image URL (optional)</label>
-            <input id="imageUrl" type="url" placeholder="https://... (image must be public)" />
-            <small class="muted">If you don't have an image, leave blank.</small>
-          </div>
-
-          <div class="field">
-            <label for="contact">Contact (phone / email)</label>
-            <input id="contact" type="text" placeholder="Owner/finder contact" />
+            <input id="imageUrl" type="url" placeholder="https://... (public image link)" />
+            <small class="muted">Optional: add a clear photo (Imgur/GitHub raw link recommended).</small>
           </div>
 
           <div class="form-actions">
-            <button type="submit">Submit</button>
+            <button type="submit" class="btn-primary">Submit</button>
             <div id="submitMsg" class="muted" aria-live="polite"></div>
           </div>
 
-          <div class="footer"><small class="muted">Note: Admins may verify entries. Avoid sharing sensitive info publicly.</small></div>
+          <div class="footer"><small class="muted">Avoid posting sensitive personal information. Admins may verify items.</small></div>
         </form>
       </aside>
     </main>
+
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <span>Built for campus — <strong>Lost &amp; Found</strong></span>
+        <span class="muted">• &nbsp;Project demo for faculty evaluation</span>
+      </div>
+    </footer>
   </div>
 
   <script src="script.js"></script>

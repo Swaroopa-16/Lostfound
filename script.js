@@ -1,26 +1,33 @@
-/* script.js — drop-in replacement
-   Shows the occurrence date (entered with calendar) clearly on each card.
-   Kept all existing IDs and behavior intact.
+/* final script.js
+   - Fetch items from Apps Script
+   - Render occurrence date + reported date
+   - Direct image upload to Apps Script -> Google Drive (fills imageUrl)
+   - Keep all existing IDs and behavior
 */
 
-/* ------------------ CONFIG - DO NOT EDIT UNLESS NEEDED ------------------ */
-// Your Apps Script /exec URL (you provided this)
-const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbw33RvD6HF4zognGBKK9PhLn5zSTiQFhsgEYqG4louIt71zhT4e5n-p7KOx467fHbiaVQ/exec';
+/* ------------------ CONFIG ------------------ */
+// Use your deployed Apps Script /exec URL here:
+const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzclTSeEeMwdtFt9q0sgorfOk4RFTcpigRt7XCRNJU2EbMzLMxWKtHCoFYv77pwtk-BEQ/exec';
 
-// Logo path in repo root
+// Path to logo inside your repo root
 const LOGO_PATH = 'cmrit_logo.webp';
 const LOGO_ALT_TEXT = 'Campus Logo';
-/* ----------------------------------------------------------------------- */
+/* ------------------------------------------- */
 
 const itemsGrid = document.getElementById('itemsGrid');
 const itemsEmpty = document.getElementById('itemsEmpty');
 const searchBox = document.getElementById('searchBox');
 const logoWrap = document.getElementById('logoWrap');
 
+const imageFileInput = document.getElementById('imageFile'); // file input (optional)
+const imageUrlInput = document.getElementById('imageUrl');   // url input (existing)
+const uploadStatus = document.getElementById('uploadStatus'); // small status indicator
+
 let cachedItems = [];
 
-/* ---------------- LOGO loader (unchanged) ---------------- */
+/* ---------------- LOGO loader ---------------- */
 function loadLogo(){
+  if(!logoWrap) return;
   logoWrap.innerHTML = '';
   if(!LOGO_PATH || LOGO_PATH.includes('REPLACE_WITH')){
     logoWrap.innerHTML = inlineSvgLogo();
@@ -54,6 +61,7 @@ function inlineSvgLogo(){
 
 /* ---------------- FETCH / RENDER ---------------- */
 async function fetchItems(){
+  if(!itemsGrid) return;
   itemsGrid.innerHTML = '<div class="muted" style="padding:12px">Loading items...</div>';
   try{
     if(!SHEET_API_URL || SHEET_API_URL.includes('REPLACE_WITH')) throw new Error('SHEET_API_URL not set. Edit script.js and paste your Web App /exec URL.');
@@ -65,10 +73,10 @@ async function fetchItems(){
     const items = Array.isArray(json) ? json : (json.items || []);
     cachedItems = items.map(normalizeItem);
 
-    // Sort older -> newer so newest items appear at bottom (as you requested earlier)
+    // Sort older -> newer (so newest appear at bottom)
     cachedItems.sort((a,b) => {
-      const ta = parseDateValue(a.reported || a.timestamp || '');
-      const tb = parseDateValue(b.reported || b.timestamp || '');
+      const ta = parseDateValue(a.reportedDate || a.reported || a.timestamp || '');
+      const tb = parseDateValue(b.reportedDate || b.reported || b.timestamp || '');
       if(!ta && !tb) return 0;
       if(!ta) return -1;
       if(!tb) return 1;
@@ -89,33 +97,36 @@ function normalizeItem(raw){
     title: it.title || it.Title || it.NAME || it.name || '',
     description: it.description || it.Description || it.desc || '',
     place: it.place || it.Place || '',
-    date: it.date || it.Date || '',            // occurrence date (from calendar)
+    date: it.date || it.Date || '',            // occurrence date
     imageUrl: it.imageUrl || it.imageURL || it.Image || '',
     contact: it.contact || it.Contact || '',
     type: it.type || it.Type || '',
-    reported: it.reportedDate || it.reported || it.timestamp || it.Timestamp || '',
+    reportedDate: it.reportedDate || it.reported || it.timestamp || it.Timestamp || '',
     timestamp: it.timestamp || it.Timestamp || '',
     raw: it
   };
 }
 
-/* Render with occurrence date visible and nicely formatted */
 function renderItems(){
-  const query = searchBox.value.trim().toLowerCase();
+  if(!itemsGrid) return;
+  const query = searchBox ? searchBox.value.trim().toLowerCase() : '';
   if(!cachedItems || cachedItems.length === 0){
     itemsGrid.innerHTML = '';
-    itemsEmpty.style.display = 'block';
+    if(itemsEmpty) itemsEmpty.style.display = 'block';
     return;
   }
-  itemsEmpty.style.display = 'none';
+  if(itemsEmpty) itemsEmpty.style.display = 'none';
+
   const filtered = cachedItems.filter(it => {
     const s = `${it.title} ${it.description} ${it.place} ${it.contact} ${it.type}`.toLowerCase();
     return s.includes(query);
   });
+
   if(filtered.length === 0){
     itemsGrid.innerHTML = `<div class="muted" style="padding:12px">No matches for "<strong>${escapeHtml(query)}</strong>"</div>`;
     return;
   }
+
   itemsGrid.innerHTML = filtered.map(it => cardHtml(it)).join('');
   // attach image error handlers
   document.querySelectorAll('.card .thumb img').forEach(img => {
@@ -127,18 +138,11 @@ function renderItems(){
   });
 }
 
-/* Card HTML: displays 'Date:' as the occurrence date entered by user (formatted) */
 function cardHtml(it){
   const imgUrl = sanitizeUrl(it.imageUrl);
-  const thumb = imgUrl
-    ? `<img loading="lazy" src="${imgUrl}" alt="${escapeHtml(it.title||'item')}">`
-    : placeholderSvgHtml();
+  const thumb = imgUrl ? `<img loading="lazy" src="${imgUrl}" alt="${escapeHtml(it.title||'item')}">` : placeholderSvgHtml();
+  const tag = (it.type && it.type.toLowerCase() === 'found') ? `<span class="tag" style="background:#e8f6ff;color:#0b4f70">Found</span>` : `<span class="tag">Lost</span>`;
 
-  const tag = (it.type && it.type.toLowerCase() === 'found')
-    ? `<span class="tag" style="background:#e8f6ff;color:#0b4f70">Found</span>`
-    : `<span class="tag">Lost</span>`;
-
-  // NEW: format occurrence & reported dates
   const occurrenceText = formatOccurrenceDate(it.date);
   const reportedText = formatFriendlyDate(it.reportedDate || it.timestamp);
 
@@ -150,16 +154,11 @@ function cardHtml(it){
           ${tag}
           <h3 style="flex:1">${escapeHtml(it.title || 'Untitled')}</h3>
         </div>
-
         <div class="desc">${escapeHtml(it.description || '')}</div>
-
         <div class="meta">
           <div><strong>Place:</strong> ${escapeHtml(it.place || '—')}</div>
-
           <div><strong>Occurrence Date:</strong> ${escapeHtml(occurrenceText || '—')}</div>
-
           <div><strong>Reported on:</strong> ${escapeHtml(reportedText || '—')}</div>
-
           <div><strong>Contact:</strong> ${escapeHtml(it.contact || '—')}</div>
         </div>
       </div>
@@ -167,29 +166,66 @@ function cardHtml(it){
   `;
 }
 
-
 function placeholderSvgHtml(){
   return `<svg class="placeholder-img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#f5f6f7"/><g fill="#c7c9cc"><rect x="10" y="10" width="44" height="12" rx="3"/><rect x="10" y="28" width="44" height="26" rx="3"/></g></svg>`;
 }
 
-/* ---------------- FORM SUBMIT (unchanged except ensures occurrence date sent) ---------------- */
+/* ---------------- FORM SUBMIT + IMAGE UPLOAD ---------------- */
 const formEl = document.getElementById('itemForm');
+const submitMsgEl = document.getElementById('submitMsg');
+
+if(imageFileInput){
+  imageFileInput.addEventListener('change', async (ev) => {
+    const f = ev.target.files && ev.target.files[0];
+    if(!f) return;
+    // limit size to 8 MB
+    if(f.size > 8 * 1024 * 1024){
+      alert('Image too large. Choose an image smaller than 8 MB.');
+      imageFileInput.value = '';
+      return;
+    }
+    if(uploadStatus) uploadStatus.textContent = 'Uploading image...';
+    try{
+      const dataUrl = await readFileAsDataURL(f);
+      // POST to Apps Script as JSON
+      const payload = { action: 'uploadImage', filename: f.name, imageBase64: dataUrl };
+      const res = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if(!res.ok) throw new Error('Network response not ok: ' + res.status);
+      const j = await res.json();
+      if(j && j.success && j.url){
+        if(imageUrlInput) imageUrlInput.value = j.url;
+        if(uploadStatus) uploadStatus.textContent = 'Uploaded ✓';
+      } else {
+        throw new Error((j && j.message) ? j.message : 'Upload failed');
+      }
+    } catch(err){
+      console.error('Upload error', err);
+      if(uploadStatus) uploadStatus.textContent = 'Upload failed';
+      alert('Image upload failed: ' + err.message);
+    }
+  });
+}
+
 if(formEl){
   formEl.addEventListener('submit', async (ev) => {
     ev.preventDefault();
-    const submitMsg = document.getElementById('submitMsg');
-    submitMsg.textContent = 'Submitting...';
-    const occurrence = document.getElementById('date').value || ''; // calendar value (YYYY-MM-DD)
+    if(!submitMsgEl) return;
+    submitMsgEl.textContent = 'Submitting...';
+    const occurrence = document.getElementById('date') ? document.getElementById('date').value || '' : '';
     const payload = {
       timestamp: new Date().toISOString(),
       reportedDate: new Date().toISOString(),
-      type: document.getElementById('type').value,
-      title: document.getElementById('title').value.trim(),
-      description: document.getElementById('desc').value.trim(),
-      place: document.getElementById('place').value.trim(),
-      date: occurrence, // important: occurrence date sent to sheet
-      imageUrl: document.getElementById('imageUrl').value.trim(),
-      contact: document.getElementById('contact').value.trim()
+      type: document.getElementById('type') ? document.getElementById('type').value : '',
+      title: document.getElementById('title') ? document.getElementById('title').value.trim() : '',
+      description: document.getElementById('desc') ? document.getElementById('desc').value.trim() : '',
+      place: document.getElementById('place') ? document.getElementById('place').value.trim() : '',
+      date: occurrence,
+      imageUrl: imageUrlInput ? imageUrlInput.value.trim() : '',
+      contact: document.getElementById('contact') ? document.getElementById('contact').value.trim() : ''
     };
     try{
       if(!SHEET_API_URL || SHEET_API_URL.includes('REPLACE_WITH')) throw new Error('SHEET_API_URL not configured in script.js');
@@ -199,38 +235,50 @@ if(formEl){
       if(!res.ok) throw new Error('Network response not ok: ' + res.status);
       const data = await res.json();
       if(data && (data.success === true || data === true)){
-        submitMsg.textContent = 'Added ✓';
-        // append locally so it appears at bottom (no immediate refetch required)
+        submitMsgEl.textContent = 'Added ✓';
+        // append locally so it appears without refetch
         const newItem = normalizeItem(payload);
         cachedItems.push(newItem);
         renderItems();
         formEl.reset();
-        setTimeout(()=>{ submitMsg.textContent=''; }, 800);
+        if(uploadStatus) uploadStatus.textContent = '';
+        setTimeout(()=>{ submitMsgEl.textContent=''; }, 900);
       } else {
         throw new Error((data && data.message) ? data.message : 'Unknown server response');
       }
     } catch(err){
       console.error('Submit error', err);
-      submitMsg.textContent = 'Failed to submit';
-      alert('Failed to submit. Check SHEET_API_URL and Apps Script deployment.\n' + err.message);
+      submitMsgEl.textContent = 'Failed to submit';
+      alert('Submit failed: ' + err.message);
     }
+  });
+}
+
+/* ---------- small helper to read file ---------- */
+function readFileAsDataURL(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = reject;
+    r.readAsDataURL(file);
   });
 }
 
 /* ---------------- SEARCH (debounced) ---------------- */
 let searchTimer = 0;
-searchBox.addEventListener('input', ()=> {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(renderItems, 150);
-});
+if(searchBox){
+  searchBox.addEventListener('input', ()=> {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(renderItems, 150);
+  });
+}
 
-/* ---------------- Utilities: escaping & date formatting ---------------- */
+/* ---------------- Utilities ---------------- */
 function escapeHtml(str=''){ return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sanitizeUrl(u=''){ try{ if(!u) return ''; const url = new URL(u); return url.href; }catch(e){ return ''; } }
 
 function parseDateValue(v){
   if(!v) return null;
-  // Try ISO or other parseable dates
   const d = new Date(String(v));
   if(!isNaN(d.getTime())) return d.getTime();
   const p = Date.parse(String(v));
@@ -245,22 +293,15 @@ function formatFriendlyDate(value){
   return d.toLocaleString([], { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
-/* New: format occurrence date (user-entered calendar date)
-   - If it's YYYY-MM-DD, display as 'DD Mon YYYY' (e.g., 07 Dec 2025)
-   - Otherwise attempt parse and friendly format
-*/
 function formatOccurrenceDate(value){
   if(!value) return '';
   const s = String(value).trim();
-  // match YYYY-MM-DD
   const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if(m){
     const year = Number(m[1]), month = Number(m[2]) - 1, day = Number(m[3]);
     const d = new Date(Date.UTC(year, month, day));
-    // Use locale date (no time)
     return d.toLocaleDateString([], { year:'numeric', month:'short', day:'numeric' });
   }
-  // fallback to parse
   const t = parseDateValue(s);
   if(!t) return s;
   return new Date(t).toLocaleDateString([], { year:'numeric', month:'short', day:'numeric' });

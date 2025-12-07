@@ -5,7 +5,7 @@ const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzclTSeEeMwdtFt9q
 // Path to logo inside your repo (relative) or raw GitHub URL.
 // Example relative: 'assets/cmrit_logo.webp' or 'cmrit_logo.webp'
 // Example raw GitHub: 'https://raw.githubusercontent.com/username/repo/branch/assets/cmrit_logo.webp'
-const LOGO_PATH = 'assets/cmrit_logo.webp';
+const LOGO_PATH = 'cmrit_logo.webp';
 
 const LOGO_ALT_TEXT = 'Campus Logo';
 /* -------------------------------------------------------- */

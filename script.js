@@ -1,11 +1,16 @@
-/* ------------------ CONFIG - DO NOT FORGET ------------------ */
+/* script.js — drop-in replacement
+   Shows the occurrence date (entered with calendar) clearly on each card.
+   Kept all existing IDs and behavior intact.
+*/
+
+/* ------------------ CONFIG - DO NOT EDIT UNLESS NEEDED ------------------ */
 // Your Apps Script /exec URL (you provided this)
 const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzclTSeEeMwdtFt9q0sgorfOk4RFTcpigRt7XCRNJU2EbMzLMxWKtHCoFYv77pwtk-BEQ/exec';
 
 // Logo path in repo root
 const LOGO_PATH = 'cmrit_logo.webp';
 const LOGO_ALT_TEXT = 'Campus Logo';
-/* ---------------------------------------------------------- */
+/* ----------------------------------------------------------------------- */
 
 const itemsGrid = document.getElementById('itemsGrid');
 const itemsEmpty = document.getElementById('itemsEmpty');
@@ -14,7 +19,7 @@ const logoWrap = document.getElementById('logoWrap');
 
 let cachedItems = [];
 
-// --- Logo loader with robust fallback ---
+/* ---------------- LOGO loader (unchanged) ---------------- */
 function loadLogo(){
   logoWrap.innerHTML = '';
   if(!LOGO_PATH || LOGO_PATH.includes('REPLACE_WITH')){
@@ -47,23 +52,20 @@ function inlineSvgLogo(){
   </svg>`;
 }
 
-// --- Fetch items from Apps Script (GET) ---
+/* ---------------- FETCH / RENDER ---------------- */
 async function fetchItems(){
   itemsGrid.innerHTML = '<div class="muted" style="padding:12px">Loading items...</div>';
   try{
-    if(!SHEET_API_URL || SHEET_API_URL.includes('REPLACE_WITH')){
-      throw new Error('SHEET_API_URL not set. Edit script.js and paste your Web App /exec URL.');
-    }
+    if(!SHEET_API_URL || SHEET_API_URL.includes('REPLACE_WITH')) throw new Error('SHEET_API_URL not set. Edit script.js and paste your Web App /exec URL.');
     const url = new URL(SHEET_API_URL);
     url.searchParams.set('action', 'getItems');
     const res = await fetch(url.toString(), { cache: 'no-cache' });
     if(!res.ok) throw new Error('Network response not ok: ' + res.status);
     const json = await res.json();
-    // Accept array or {success:true, items:[]}
     const items = Array.isArray(json) ? json : (json.items || []);
     cachedItems = items.map(normalizeItem);
 
-    // Sort by reported timestamp ascending, so older appear first and newest at bottom
+    // Sort older -> newer so newest items appear at bottom (as you requested earlier)
     cachedItems.sort((a,b) => {
       const ta = parseDateValue(a.reported || a.timestamp || '');
       const tb = parseDateValue(b.reported || b.timestamp || '');
@@ -80,38 +82,24 @@ async function fetchItems(){
   }
 }
 
-// parse various timestamp formats to millis
-function parseDateValue(v){
-  if(!v) return null;
-  // attempt ISO parse
-  const d = new Date(String(v));
-  if(!isNaN(d.getTime())) return d.getTime();
-  // fallback: try Date.parse
-  const p = Date.parse(String(v));
-  return isNaN(p) ? null : p;
-}
-
-// Normalize different header casing and shapes
 function normalizeItem(raw){
   const it = {};
   Object.keys(raw || {}).forEach(k => it[k.trim()] = String(raw[k] || '').trim());
-  // reported date: prefer explicit reportedDate or timestamp fields returned by server
-  const reported = it.reportedDate || it.reported || it.timestamp || it.Timestamp || it.time || '';
   return {
     title: it.title || it.Title || it.NAME || it.name || '',
     description: it.description || it.Description || it.desc || '',
     place: it.place || it.Place || '',
-    date: it.date || it.Date || '',
+    date: it.date || it.Date || '',            // occurrence date (from calendar)
     imageUrl: it.imageUrl || it.imageURL || it.Image || '',
     contact: it.contact || it.Contact || '',
     type: it.type || it.Type || '',
-    reported: reported,
+    reported: it.reportedDate || it.reported || it.timestamp || it.Timestamp || '',
     timestamp: it.timestamp || it.Timestamp || '',
     raw: it
   };
 }
 
-// --- Render using cachedItems and search input ---
+/* Render with occurrence date visible and nicely formatted */
 function renderItems(){
   const query = searchBox.value.trim().toLowerCase();
   if(!cachedItems || cachedItems.length === 0){
@@ -128,7 +116,6 @@ function renderItems(){
     itemsGrid.innerHTML = `<div class="muted" style="padding:12px">No matches for "<strong>${escapeHtml(query)}</strong>"</div>`;
     return;
   }
-  // Render order preserved (older first -> newer at bottom)
   itemsGrid.innerHTML = filtered.map(it => cardHtml(it)).join('');
   // attach image error handlers
   document.querySelectorAll('.card .thumb img').forEach(img => {
@@ -140,12 +127,18 @@ function renderItems(){
   });
 }
 
+/* Card HTML: displays 'Date:' as the occurrence date entered by user (formatted) */
 function cardHtml(it){
   const imgUrl = sanitizeUrl(it.imageUrl);
   const thumb = imgUrl ? `<img loading="lazy" src="${imgUrl}" alt="${escapeHtml(it.title||'item')}">` : placeholderSvgHtml();
   const tag = (it.type && it.type.toLowerCase() === 'found') ? `<span class="tag" style="background:#e8f6ff;color:#0b4f70">Found</span>` : `<span class="tag">Lost</span>`;
-  // reported display: prefer reported value else timestamp; format nicely
+
+  // Format occurrence date (entered by user in calendar) nicely
+  const occurrenceText = formatOccurrenceDate(it.date);
+
+  // Reported/submit date (kept as is) formatted friendly
   const reportedText = formatFriendlyDate(it.reported || it.timestamp);
+
   return `
     <article class="card" role="article">
       <div class="thumb">${thumb}</div>
@@ -154,10 +147,10 @@ function cardHtml(it){
           ${tag}
           <h3 style="flex:1">${escapeHtml(it.title || 'Untitled')}</h3>
         </div>
-        <div style="color:var(--muted); font-size:13px">${escapeHtml(it.description || '')}</div>
+        <div class="desc">${escapeHtml(it.description || '')}</div>
         <div class="meta">
           <div>Place: ${escapeHtml(it.place||'—')}</div>
-          <div>Date: ${escapeHtml(it.date||'—')}</div>
+          <div>Date: ${escapeHtml(occurrenceText || '—')}</div>
           <div>Reported: ${escapeHtml(reportedText || '—')}</div>
           <div>Contact: ${escapeHtml(it.contact||'—')}</div>
         </div>
@@ -170,33 +163,22 @@ function placeholderSvgHtml(){
   return `<svg class="placeholder-img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#f5f6f7"/><g fill="#c7c9cc"><rect x="10" y="10" width="44" height="12" rx="3"/><rect x="10" y="28" width="44" height="26" rx="3"/></g></svg>`;
 }
 
-// friendly date format (local)
-function formatFriendlyDate(value){
-  if(!value) return '';
-  const t = parseDateValue(value);
-  if(!t) return String(value).slice(0, 20);
-  const d = new Date(t);
-  return d.toLocaleString([], { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-}
-
-// --- Form submit (urlencoded) ---
-// When submitting we send both 'date' (occurrence) and 'reportedDate' (now)
+/* ---------------- FORM SUBMIT (unchanged except ensures occurrence date sent) ---------------- */
 const formEl = document.getElementById('itemForm');
 if(formEl){
   formEl.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     const submitMsg = document.getElementById('submitMsg');
     submitMsg.textContent = 'Submitting...';
-    // build payload
-    const occurrence = document.getElementById('date').value || '';
+    const occurrence = document.getElementById('date').value || ''; // calendar value (YYYY-MM-DD)
     const payload = {
       timestamp: new Date().toISOString(),
-      reportedDate: new Date().toISOString(), // explicit reported date
+      reportedDate: new Date().toISOString(),
       type: document.getElementById('type').value,
       title: document.getElementById('title').value.trim(),
       description: document.getElementById('desc').value.trim(),
       place: document.getElementById('place').value.trim(),
-      date: occurrence, // occurrence date from calendar (yyyy-mm-dd) or empty
+      date: occurrence, // important: occurrence date sent to sheet
       imageUrl: document.getElementById('imageUrl').value.trim(),
       contact: document.getElementById('contact').value.trim()
     };
@@ -211,11 +193,9 @@ if(formEl){
         submitMsg.textContent = 'Added ✓';
         // append locally so it appears at bottom (no immediate refetch required)
         const newItem = normalizeItem(payload);
-        // push to cachedItems; ensure order preserved (older first -> newest last)
         cachedItems.push(newItem);
         renderItems();
         formEl.reset();
-        // clear message after short time
         setTimeout(()=>{ submitMsg.textContent=''; }, 800);
       } else {
         throw new Error((data && data.message) ? data.message : 'Unknown server response');
@@ -228,17 +208,55 @@ if(formEl){
   });
 }
 
-// --- Search (debounced) ---
+/* ---------------- SEARCH (debounced) ---------------- */
 let searchTimer = 0;
 searchBox.addEventListener('input', ()=> {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(renderItems, 150);
 });
 
-// --- Utilities ---
+/* ---------------- Utilities: escaping & date formatting ---------------- */
 function escapeHtml(str=''){ return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function sanitizeUrl(u=''){ try{ if(!u) return ''; const url = new URL(u); return url.href; }catch(e){ return ''; } }
 
-// --- Init ---
+function parseDateValue(v){
+  if(!v) return null;
+  // Try ISO or other parseable dates
+  const d = new Date(String(v));
+  if(!isNaN(d.getTime())) return d.getTime();
+  const p = Date.parse(String(v));
+  return isNaN(p) ? null : p;
+}
+
+function formatFriendlyDate(value){
+  if(!value) return '';
+  const t = parseDateValue(value);
+  if(!t) return String(value).slice(0,20);
+  const d = new Date(t);
+  return d.toLocaleString([], { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+/* New: format occurrence date (user-entered calendar date)
+   - If it's YYYY-MM-DD, display as 'DD Mon YYYY' (e.g., 07 Dec 2025)
+   - Otherwise attempt parse and friendly format
+*/
+function formatOccurrenceDate(value){
+  if(!value) return '';
+  const s = String(value).trim();
+  // match YYYY-MM-DD
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m){
+    const year = Number(m[1]), month = Number(m[2]) - 1, day = Number(m[3]);
+    const d = new Date(Date.UTC(year, month, day));
+    // Use locale date (no time)
+    return d.toLocaleDateString([], { year:'numeric', month:'short', day:'numeric' });
+  }
+  // fallback to parse
+  const t = parseDateValue(s);
+  if(!t) return s;
+  return new Date(t).toLocaleDateString([], { year:'numeric', month:'short', day:'numeric' });
+}
+
+/* ---------------- INIT ---------------- */
 loadLogo();
 fetchItems();

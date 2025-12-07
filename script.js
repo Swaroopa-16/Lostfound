@@ -130,14 +130,17 @@ function renderItems(){
 /* Card HTML: displays 'Date:' as the occurrence date entered by user (formatted) */
 function cardHtml(it){
   const imgUrl = sanitizeUrl(it.imageUrl);
-  const thumb = imgUrl ? `<img loading="lazy" src="${imgUrl}" alt="${escapeHtml(it.title||'item')}">` : placeholderSvgHtml();
-  const tag = (it.type && it.type.toLowerCase() === 'found') ? `<span class="tag" style="background:#e8f6ff;color:#0b4f70">Found</span>` : `<span class="tag">Lost</span>`;
+  const thumb = imgUrl
+    ? `<img loading="lazy" src="${imgUrl}" alt="${escapeHtml(it.title||'item')}">`
+    : placeholderSvgHtml();
 
-  // Format occurrence date (entered by user in calendar) nicely
+  const tag = (it.type && it.type.toLowerCase() === 'found')
+    ? `<span class="tag" style="background:#e8f6ff;color:#0b4f70">Found</span>`
+    : `<span class="tag">Lost</span>`;
+
+  // NEW: format occurrence & reported dates
   const occurrenceText = formatOccurrenceDate(it.date);
-
-  // Reported/submit date (kept as is) formatted friendly
-  const reportedText = formatFriendlyDate(it.reported || it.timestamp);
+  const reportedText = formatFriendlyDate(it.reportedDate || it.timestamp);
 
   return `
     <article class="card" role="article">
@@ -147,17 +150,23 @@ function cardHtml(it){
           ${tag}
           <h3 style="flex:1">${escapeHtml(it.title || 'Untitled')}</h3>
         </div>
+
         <div class="desc">${escapeHtml(it.description || '')}</div>
+
         <div class="meta">
-          <div>Place: ${escapeHtml(it.place||'—')}</div>
-          <div>Date: ${escapeHtml(occurrenceText || '—')}</div>
-          <div>Reported: ${escapeHtml(reportedText || '—')}</div>
-          <div>Contact: ${escapeHtml(it.contact||'—')}</div>
+          <div><strong>Place:</strong> ${escapeHtml(it.place || '—')}</div>
+
+          <div><strong>Occurrence Date:</strong> ${escapeHtml(occurrenceText || '—')}</div>
+
+          <div><strong>Reported on:</strong> ${escapeHtml(reportedText || '—')}</div>
+
+          <div><strong>Contact:</strong> ${escapeHtml(it.contact || '—')}</div>
         </div>
       </div>
     </article>
   `;
 }
+
 
 function placeholderSvgHtml(){
   return `<svg class="placeholder-img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#f5f6f7"/><g fill="#c7c9cc"><rect x="10" y="10" width="44" height="12" rx="3"/><rect x="10" y="28" width="44" height="26" rx="3"/></g></svg>`;

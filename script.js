@@ -2,9 +2,7 @@
 // Paste your Apps Script /exec URL here (must be deployed as Web App -> Execute as: Me, Who has access: Anyone)
 const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbzclTSeEeMwdtFt9q0sgorfOk4RFTcpigRt7XCRNJU2EbMzLMxWKtHCoFYv77pwtk-BEQ/exec';
 
-// Path to logo inside your repo (relative) or raw GitHub URL.
-// Example relative: 'assets/cmrit_logo.webp' or 'cmrit_logo.webp'
-// Example raw GitHub: 'https://raw.githubusercontent.com/username/repo/branch/assets/cmrit_logo.webp'
+// Path to logo inside your repo (root file in your repo)
 const LOGO_PATH = 'cmrit_logo.webp';
 
 const LOGO_ALT_TEXT = 'Campus Logo';
@@ -19,15 +17,11 @@ let cachedItems = [];
 
 // --- Logo loader with robust fallback ---
 function loadLogo(){
-  // Remove any previous children (safety)
   logoWrap.innerHTML = '';
-
   if(!LOGO_PATH || LOGO_PATH.includes('REPLACE_WITH')){
-    // show fallback immediately
     logoWrap.innerHTML = inlineSvgLogo();
     return;
   }
-
   const img = new Image();
   img.alt = LOGO_ALT_TEXT;
   img.onload = () => {
@@ -40,7 +34,6 @@ function loadLogo(){
   img.onerror = () => {
     logoWrap.innerHTML = inlineSvgLogo();
   };
-  // set src last
   img.src = LOGO_PATH;
 }
 
@@ -68,7 +61,6 @@ async function fetchItems(){
     const res = await fetch(url.toString(), { cache: 'no-cache' });
     if(!res.ok) throw new Error('Network response not ok: ' + res.status);
     const json = await res.json();
-    // Accept either raw array (older script) or {success:true, items: []}
     const items = Array.isArray(json) ? json : (json.items || []);
     cachedItems = items.map(normalizeItem);
     renderItems();
@@ -112,7 +104,6 @@ function renderItems(){
     return;
   }
   itemsGrid.innerHTML = filtered.map(it => cardHtml(it)).join('');
-  // attach image error handlers
   document.querySelectorAll('.card .thumb img').forEach(img => {
     img.addEventListener('error', ()=> {
       img.style.display = 'none';
@@ -156,7 +147,6 @@ if(formEl){
     ev.preventDefault();
     const submitMsg = document.getElementById('submitMsg');
     submitMsg.textContent = 'Submitting...';
-    // build payload
     const payload = {
       timestamp: new Date().toISOString(),
       type: document.getElementById('type').value,
@@ -177,7 +167,6 @@ if(formEl){
       if(data && (data.success === true || data === true)){
         submitMsg.textContent = 'Added ✓';
         formEl.reset();
-        // refresh after slight delay
         setTimeout(()=>{ submitMsg.textContent=''; fetchItems(); }, 700);
       } else {
         throw new Error((data && data.message) ? data.message : 'Unknown server response');

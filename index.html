@@ -4,110 +4,102 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Campus Lost & Found</title>
-  <meta name="description" content="Campus Lost & Found - report and browse items" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="wrap" role="main">
+  <div class="wrap">
     <header class="site-header">
-      <div class="logo" id="logoWrap" title="Campus Lost & Found" aria-hidden="false">
-        <!-- script.js will insert logo or fallback -->
-      </div>
+      <div class="logo" id="logoWrap"></div>
       <div class="brand">
         <h1 class="title">Campus Lost & Found</h1>
-        <p class="subtitle">Report • Discover • Reunite</p>
+        <p class="subtitle">Report & recover items easily</p>
       </div>
-
     </header>
 
+    <!-- MAIN: Form FIRST, Items NEXT -->
     <main class="container">
-      <section class="panel" aria-labelledby="itemsHeading">
-        <div class="panel-head">
-          <h2 id="itemsHeading" class="panel-title">Available Items</h2>
-          <p class="panel-sub muted">Browse recent lost &amp; found items from the campus community</p>
-        </div>
 
-        <input id="searchBox" class="search" placeholder="Search by item, place or contact..." aria-label="Search items" />
-
-        <div id="itemsGrid" class="items-grid" aria-live="polite"></div>
-        <div id="itemsEmpty" class="muted empty-note" style="display:none; padding:12px">No items yet. Add one using the form.</div>
-      </section>
-
-      <aside class="panel" aria-labelledby="addHeading">
+      <!-- REPORTING BLOCK FIRST -->
+      <aside class="panel" aria-labelledby="addHeading" id="reportBlock">
         <div class="panel-head">
           <h3 id="addHeading" class="panel-title">Add Lost / Found Item</h3>
-         
+          <p class="panel-sub muted">Quick report — keep it short and clear</p>
         </div>
 
         <form id="itemForm" autocomplete="off" class="item-form">
           <div class="field-row">
             <div class="field-col">
               <label for="type">Type</label>
-              <select id="type" required>
-                <option value="Lost">Lost</option>
-                <option value="Found">Found</option>
+              <select id="type" name="type">
+                <option>Lost</option>
+                <option>Found</option>
               </select>
             </div>
 
             <div class="field-col">
               <label for="date">Occurrence Date</label>
-              <!-- calendar input -->
-              <input id="date" type="date" />
+              <input id="date" name="date" type="date" placeholder="dd-mm-yyyy" />
             </div>
           </div>
 
-         <div class="field">
-  <label for="imageFile">Image (upload or paste URL)</label>
+          <!-- ITEM NAME (clearly asked) -->
+          <div class="field">
+            <label for="title">What is the item? <small class="muted">(e.g., Black wallet)</small></label>
+            <input id="title" name="title" type="text" placeholder="Item name (e.g., Wallet, Keys)" required />
+          </div>
 
-  <!-- direct upload input -->
-  <input id="imageFile" type="file" accept="image/*" />
-
-  <!-- fallback / shows resulting uploaded URL -->
-  <input id="imageUrl" type="url" placeholder="Or paste public image URL (optional)" />
-  <small class="muted">Upload from device or paste an image URL. Uploaded files will be stored in Drive and auto-filled above.</small>
-
-  <!-- small status indicator -->
-  <div id="uploadStatus" class="muted" style="margin-top:8px"></div>
-</div>
+          <!-- Image uploader + fallback URL -->
+          <div class="field">
+            <label for="imageFile">Image (upload or paste URL)</label>
+            <input id="imageFile" type="file" accept="image/*" />
+            <input id="imageUrl" type="url" placeholder="Or paste public image URL (optional)" />
+            <small class="muted">Upload from device or paste an image URL. Uploaded files will be stored in Drive and auto-filled above.</small>
+            <div id="uploadStatus" class="muted" style="margin-top:8px"></div>
+          </div>
 
           <div class="field">
             <label for="desc">Description</label>
-            <textarea id="desc" placeholder="unique marks "></textarea>
+            <textarea id="desc" name="description" placeholder="Short description: unique marks, brand, colour..."></textarea>
           </div>
 
           <div class="field-row">
             <div class="field-col">
               <label for="place">Place (where lost/found)</label>
-              <input id="place" type="text" placeholder="e.g., Library, Canteen" />
+              <input id="place" name="place" type="text" placeholder="e.g., Library, Canteen" />
             </div>
             <div class="field-col">
               <label for="contact">Contact (phone / email)</label>
-              <input id="contact" type="text" placeholder="Phone or email (for contact)" />
+              <input id="contact" name="contact" type="text" placeholder="Phone or email (for contact)" />
             </div>
           </div>
 
-          <div class="field">
-            <label for="imageUrl">Image URL (optional)</label>
-            <input id="imageUrl" type="url" placeholder="https://... (public image link)" />
-            <small class="muted">Optional: add a clear photo link.</small>
-          </div>
-
-          <div class="form-actions">
+          <div style="display:flex; align-items:center; gap:12px; margin-top:6px;">
             <button type="submit" class="btn-primary">Submit</button>
-            <div id="submitMsg" class="muted" aria-live="polite"></div>
+            <div id="submitMsg" style="color:var(--muted); font-weight:600"></div>
           </div>
 
-          <div class="footer"><small class="muted">Avoid sharing sensitive personal information. Admins may verify the item.</small></div>
+          <p class="muted" style="margin-top:12px; font-size:13px">
+            Avoid sharing sensitive personal information. Admins may verify items.
+          </p>
         </form>
       </aside>
+
+      <!-- ITEMS NEXT -->
+      <section class="panel" aria-labelledby="itemsHeading">
+        <div class="panel-head">
+          <h2 id="itemsHeading" class="panel-title">Available Items</h2>
+          <p class="panel-sub muted">Browse recent lost &amp; found items from the campus community</p>
+        </div>
+
+        <input id="searchBox" class="search" placeholder="Search by item, place or contact..." />
+        <div id="itemsGrid" class="items-grid"></div>
+        <div id="itemsEmpty" class="muted empty-note" style="display:none; padding:12px">No items yet.</div>
+      </section>
+
     </main>
 
     <footer class="site-footer">
-      <div class="footer-inner">
-        <span>Built for campus — <strong>Lost &amp; Found</strong></span>
-        
-      </div>
+      <div class="footer-inner">Built for campus — Lost & Found</div>
     </footer>
   </div>
 

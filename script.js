@@ -3,7 +3,7 @@
    2) keep Apps Script deployed with Drive scopes (Execute as: Me) and public access
 */
 
-const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbw33RvD6HF4zognGBKK9PhLn5zSTiQFhsgEYqG4louIt71zhT4e5n-p7KOx467fHbiaVQ/exec'; // <-- REPLACE with your /exec URL
+const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbwqAexpsvyR17rzTodoFvSF6kBuxsT8I_dFs6A3YUQtWGH7pUJVYMgSSzkiW4Wp8hiLBA/exec'; // <-- REPLACE with your /exec URL
 const LOGO_PATH = 'cmrit_logo.webp';
 const LOGO_ALT_TEXT = 'Campus Logo';
 

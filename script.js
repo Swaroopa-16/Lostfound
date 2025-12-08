@@ -214,12 +214,18 @@ if(imageFileInput){
     try{
       const dataUrl = await readFileAsDataURL(f);
       // send to Apps Script
-      const body = { action:'uploadImage', filename: f.name, imageBase64: dataUrl };
-      const r = await fetch(SHEET_API_URL, {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(body),
-      });
+      // new — form-encoded to avoid CORS preflight
+const form = new URLSearchParams();
+form.append('action', 'uploadImage');
+form.append('filename', f.name);
+form.append('imageBase64', dataUrl);
+
+// Note: do NOT set 'Content-Type' header manually — let browser set application/x-www-form-urlencoded
+const r = await fetch(SHEET_API_URL, {
+  method: 'POST',
+  body: form
+});
+
       if(!r.ok) throw new Error('Network response not ok: ' + r.status);
       const j = await r.json();
       console.log('upload result', j);

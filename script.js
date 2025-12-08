@@ -198,54 +198,72 @@ function renderItems(){
   });
 }
 
-/* ---------- Image upload handler (safe) ---------- */
-if(imageFileInput){
+// ---------- Image upload handler (form-encoded, no custom headers) ----------
+if (imageFileInput) {
   imageFileInput.addEventListener('change', async (ev) => {
     const f = ev.target.files && ev.target.files[0];
-    if(!f) return;
-    // limit size
-    if(f.size > 8 * 1024 * 1024){ alert('Image too large. Choose an image < 8 MB.'); imageFileInput.value=''; return; }
+    if (!f) return;
 
-    if(uploadInProgress){ alert('Another upload in progress. Please wait.'); return; }
+    // Quick size guard
+    if (f.size > 8 * 1024 * 1024) {
+      alert('Image too large. Choose an image smaller than 8 MB.');
+      imageFileInput.value = '';
+      return;
+    }
+
+    // Prevent re-entrant uploads
+    if (uploadInProgress) {
+      alert('An upload is already in progress. Please wait.');
+      return;
+    }
     uploadInProgress = true;
-    if(uploadStatus) uploadStatus.textContent = 'Uploading image...';
-    if(submitBtn) submitBtn.disabled = true;
+    if (uploadStatus) uploadStatus.textContent = 'Uploading image...';
+    if (submitBtn) submitBtn.disabled = true;
 
-    try{
+    try {
+      // Read file as data URL
       const dataUrl = await readFileAsDataURL(f);
-      // send to Apps Script
-      // new — form-encoded to avoid CORS preflight
-const form = new URLSearchParams();
-form.append('action', 'uploadImage');
-form.append('filename', f.name);
-form.append('imageBase64', dataUrl);
 
-// Note: do NOT set 'Content-Type' header manually — let browser set application/x-www-form-urlencoded
-const r = await fetch(SHEET_API_URL, {
-  method: 'POST',
-  body: form
-});
+      // Build form-encoded body — do NOT set Content-Type header manually
+      const params = new URLSearchParams();
+      params.append('action', 'uploadImage');
+      params.append('filename', f.name);
+      params.append('imageBase64', dataUrl);
 
-      if(!r.ok) throw new Error('Network response not ok: ' + r.status);
-      const j = await r.json();
-      console.log('upload result', j);
-      if(j && j.success && j.url){
-        // fill imageUrl field with direct drive link
-        if(imageUrlInput) imageUrlInput.value = j.url;
-        if(uploadStatus) uploadStatus.textContent = 'Uploaded ✓';
-      } else {
-        throw new Error((j && j.message) ? j.message : 'Upload failed');
+      // Perform POST (no custom headers) — this avoids OPTIONS preflight
+      const res = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        body: params
+      });
+
+      // parse response
+      const text = await res.text();
+      let j;
+      try { j = JSON.parse(text); } catch (e) { j = { success:false, message: 'Invalid JSON response', raw:text }; }
+
+      if (!res.ok) {
+        throw new Error('Server returned status ' + res.status + (j && j.message ? (': ' + j.message) : ''));
       }
-    } catch(err){
+
+      if (j && j.success && j.url) {
+        // Fill the imageUrl with the server-returned direct link
+        if (imageUrlInput) imageUrlInput.value = j.url;
+        if (uploadStatus) uploadStatus.textContent = 'Uploaded ✓';
+        console.log('Upload succeeded:', j.url);
+      } else {
+        throw new Error(j && j.message ? j.message : 'Upload failed, server response: ' + JSON.stringify(j));
+      }
+    } catch (err) {
       console.error('Upload error', err);
-      if(uploadStatus) uploadStatus.textContent = 'Upload failed';
-      alert('Image upload failed: ' + err.message);
+      if (uploadStatus) uploadStatus.textContent = 'Upload failed';
+      alert('Image upload failed: ' + (err.message || err));
     } finally {
       uploadInProgress = false;
-      if(submitBtn) submitBtn.disabled = false;
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 }
+
 
 /* ---------- Form submit ---------- */
 if(formEl){

@@ -4,7 +4,7 @@
    - Sheet API URL: your Worker that proxies to Apps Script
 */
 
-const SHEET_API_URL = "https://lostfound.anandaswaroopa16.workers.dev"; // Worker (sheet API)
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbw33RvD6HF4zognGBKK9PhLn5zSTiQFhsgEYqG4louIt71zhT4e5n-p7KOx467fHbiaVQ/exec"; // Worker (sheet API)
 const CLOUD_NAME = "do48yblyi";
 const UPLOAD_PRESET = "lostandfound";
 

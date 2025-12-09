@@ -45,7 +45,7 @@
       var payload = {
         action: 'appendItem',
         timestamp: new Date().toISOString(),
-        reportedDate: (reportedDateEl && reportedDateEl.value) ? reportedDateEl.value : new Date().toISOString(),
+reportedDate: new Date().toISOString(),
         type: (document.getElementById('type') && document.getElementById('type').value) || '',
         title: (document.getElementById('title') && document.getElementById('title').value.trim()) || '',
         description: (document.getElementById('desc') && document.getElementById('desc').value.trim()) || '',

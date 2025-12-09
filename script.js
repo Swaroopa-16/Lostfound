@@ -1,239 +1,135 @@
-/* ---------------------- CONFIG ---------------------- */
-
-// Your Worker URL (for sheet data only — NOT for images)
-const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxgfPFloo-72SZ-VedN3x2G0OaSrSvRGQ7sR3a22btFNhq3-9J_-lzyuuaxFTLNzHeE0g/exec";
-
-// Cloudinary config (FINAL)
-const CLOUD_NAME = "do48yblyi";
-const UPLOAD_PRESET = "lostandfound";
-
-// Image compression settings
-const MAX_IMAGE_WIDTH = 700;
-const IMAGE_QUALITY = 0.6;
-
-/* ---------------------- MAIN SCRIPT ---------------------- */
-document.addEventListener("DOMContentLoaded", () => {
-
-  const imageFileInput = document.getElementById("imageFile");
-  const imageUrlInput  = document.getElementById("imageUrl");
-  const uploadStatus   = document.getElementById("uploadStatus");
-  const submitBtn      = document.getElementById("submitBtn");
-  const formEl         = document.getElementById("itemForm");
-
-  const itemsGrid      = document.getElementById("itemsGrid");
-  const itemsEmpty     = document.getElementById("itemsEmpty");
-  const searchBox      = document.getElementById("searchBox");
-
-  let cachedItems = [];
-  let uploadInProgress = false;
-
-  /* ---------------------- UTILITIES ---------------------- */
-  function escapeHtml(str = "") {
-    return String(str)
-      .replace(/&/g,"&amp;")
-      .replace(/</g,"&lt;")
-      .replace(/>/g,"&gt;");
-  }
-
-  function sanitizeUrl(url="") {
-    try { return new URL(url).href; } catch { return url; }
-  }
-
-  function formatDate(val){
-    if(!val) return "";
-    const d = new Date(val);
-    if(isNaN(d)) return val;
-    return d.toLocaleDateString("en-IN", {year:"numeric", month:"short", day:"numeric"});
-  }
-
-  function formatDateTime(val){
-    if(!val) return "";
-    const d = new Date(val);
-    if(isNaN(d)) return val;
-    return d.toLocaleString("en-IN", {year:"numeric", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"});
-  }
-
-  /* ---------------------- IMAGE COMPRESSION ---------------------- */
-  function compressImage(file){
-    return new Promise((resolve,reject)=>{
-      const reader = new FileReader();
-      reader.onload = e =>{
-        const img = new Image();
-        img.onload = ()=>{
-          const canvas = document.createElement("canvas");
-          const ratio = img.width / img.height;
-          canvas.width = Math.min(MAX_IMAGE_WIDTH, img.width);
-          canvas.height = canvas.width / ratio;
-
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img,0,0,canvas.width,canvas.height);
-
-          canvas.toBlob(
-            blob => blob ? resolve(blob) : reject("Compression failed"),
-            "image/jpeg",
-            IMAGE_QUALITY
-          );
-        };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  /* ---------------------- CLOUDINARY UPLOAD ---------------------- */
-  async function uploadToCloudinary(file) {
-    const compressed = await compressImage(file);
-    const formData = new FormData();
-    formData.append("file", compressed, file.name);
-    formData.append("upload_preset", UPLOAD_PRESET);
-
-    uploadStatus.textContent = "Uploading image...";
-
-    const res = await fetch(
-      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
-      { method: "POST", body: formData }
-    );
-
-    if (!res.ok) {
-      throw new Error("Cloudinary upload failed");
+// ===== Robust submit handler — paste in place of your current submit listener =====
+(function attachRobustSubmit() {
+  try {
+    if (!window.formEl) {
+      // Try to find the form if variable not available
+      window.formEl = document.getElementById('itemForm');
+    }
+    if (!window.formEl) {
+      console.error('Submit handler: form element #itemForm not found.');
+      return;
     }
 
-    const json = await res.json();
-    return json.secure_url;
-  }
+    // remove existing listeners to avoid duplicates (safe)
+    try {
+      var clone = window.formEl.cloneNode(true);
+      window.formEl.parentNode.replaceChild(clone, window.formEl);
+      window.formEl = clone;
+    } catch (e) { /* ignore clone error */ }
 
-  /* ---------------------- IMAGE INPUT HANDLER ---------------------- */
-  if (imageFileInput) {
-    imageFileInput.addEventListener("change", async evt => {
-      const file = evt.target.files[0];
-      if (!file) return;
+    window.formEl.addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
 
-      uploadInProgress = true;
-      submitBtn.disabled = true;
-      uploadStatus.textContent = "Starting upload...";
+      console.log('Submit clicked — starting submit flow');
 
-      try {
-        const url = await uploadToCloudinary(file);
-        imageUrlInput.value = url;
-        uploadStatus.textContent = "Image uploaded ✔";
-      } catch (err) {
-        console.error(err);
-        alert("Image upload failed: " + err.message);
-        uploadStatus.textContent = "Upload failed";
+      // Basic UI refs (fetch again in case globals missing)
+      var submitBtnLocal = document.getElementById('submitBtn');
+      var submitMsgLocal = document.getElementById('submitMsg');
+      var uploadStatusLocal = document.getElementById('uploadStatus');
+
+      // Minimal validation
+      var titleEl = document.getElementById('title');
+      if (!titleEl || !titleEl.value.trim()) {
+        alert('Please enter the item name.');
+        if (titleEl) titleEl.focus();
+        return;
+      }
+      if (window.uploadInProgress) {
+        alert('Please wait while the image upload finishes.');
+        return;
       }
 
-      uploadInProgress = false;
-      submitBtn.disabled = false;
-    });
+      // Build payload — gracefully handle missing elements
+      var reportedDateEl = document.getElementById('reportedDate');
+      var payload = {
+        action: 'appendItem',
+        timestamp: new Date().toISOString(),
+        reportedDate: (reportedDateEl && reportedDateEl.value) ? reportedDateEl.value : new Date().toISOString(),
+        type: (document.getElementById('type') && document.getElementById('type').value) || '',
+        title: (document.getElementById('title') && document.getElementById('title').value.trim()) || '',
+        description: (document.getElementById('desc') && document.getElementById('desc').value.trim()) || '',
+        place: (document.getElementById('place') && document.getElementById('place').value.trim()) || '',
+        date: (document.getElementById('date') && document.getElementById('date').value) || '',
+        imageUrl: (document.getElementById('imageUrl') && document.getElementById('imageUrl').value.trim()) || '',
+        contact: (document.getElementById('contact') && document.getElementById('contact').value.trim()) || ''
+      };
+
+      // UI feedback
+      if (submitBtnLocal) submitBtnLocal.disabled = true;
+      if (submitMsgLocal) submitMsgLocal.textContent = 'Submitting...';
+      console.log('Payload:', payload);
+
+      try {
+        // Build form-encoded body
+        var params = new URLSearchParams();
+        Object.keys(payload).forEach(function(k){
+          params.append(k, payload[k] || '');
+        });
+
+        // Ensure SHEET_API_URL is defined
+        if (typeof SHEET_API_URL === 'undefined' || !SHEET_API_URL) {
+          throw new Error('SHEET_API_URL not defined. Check script.js top config.');
+        }
+
+        var res = await fetch(SHEET_API_URL, {
+          method: 'POST',
+          body: params,
+          mode: 'cors'
+        });
+
+        console.log('Network status:', res.status);
+
+        var text = await res.text();
+        console.log('Raw server response:', text);
+
+        var json;
+        try {
+          json = JSON.parse(text);
+        } catch (parseErr) {
+          throw new Error('Server returned non-JSON response: ' + text.slice(0,300));
+        }
+
+        if (json && (json.success === true || json.success === 'true')) {
+          if (submitMsgLocal) submitMsgLocal.textContent = 'Added ✓';
+          // add to UI immediately
+          try {
+            if (!window.cachedItems) window.cachedItems = [];
+            window.cachedItems.unshift({
+              title: payload.title,
+              description: payload.description,
+              place: payload.place,
+              date: payload.date,
+              imageUrl: payload.imageUrl,
+              contact: payload.contact,
+              type: payload.type,
+              reportedDate: payload.reportedDate,
+              timestamp: payload.timestamp
+            });
+            if (typeof renderItems === 'function') renderItems();
+          } catch (uiErr) {
+            console.warn('Could not update UI locally:', uiErr);
+          }
+          // reset form
+          window.formEl.reset();
+          if (uploadStatusLocal) uploadStatusLocal.textContent = '';
+          setTimeout(function(){ if (submitMsgLocal) submitMsgLocal.textContent = ''; }, 1200);
+        } else {
+          throw new Error('Server returned success:false — ' + (json && json.message ? json.message : JSON.stringify(json)));
+        }
+
+      } catch (err) {
+        console.error('Submit failed:', err);
+        alert('Submit failed: ' + (err.message || err));
+        if (submitMsgLocal) submitMsgLocal.textContent = 'Submit failed';
+      } finally {
+        if (submitBtnLocal) submitBtnLocal.disabled = false;
+      }
+    }, false);
+
+    console.log('Robust submit handler attached to #itemForm');
+
+  } catch (attachErr) {
+    console.error('Error attaching submit handler:', attachErr);
   }
-
-  /* ---------------------- FETCH ITEMS ---------------------- */
-  async function fetchItems() {
-    itemsGrid.innerHTML = `<div>Loading...</div>`;
-
-    try {
-      const res = await fetch(`${SHEET_API_URL}?action=getItems`);
-      if (!res.ok) throw new Error("Network error: " + res.status);
-      const data = await res.json();
-
-      cachedItems = (data.items || []).map(it => ({
-        ...it,
-        title: it.title || "",
-        description: it.description || "",
-        place: it.place || "",
-        date: it.date || "",
-        imageUrl: it.imageUrl || "",
-        contact: it.contact || "",
-        type: it.type || "",
-        reportedDate: it.reportedDate || it.timestamp
-      }));
-
-      renderItems();
-    } catch (err) {
-      itemsGrid.innerHTML = `<div style="color:red">Failed to load items</div>`;
-      console.error(err);
-    }
-  }
-
-  /* ---------------------- RENDER ITEMS ---------------------- */
-  function renderItems() {
-    const q = searchBox.value.trim().toLowerCase();
-
-    const filtered = cachedItems.filter(it => (
-      (it.title + it.description + it.place + it.type + it.contact)
-      .toLowerCase()
-      .includes(q)
-    ));
-
-    if (filtered.length === 0) {
-      itemsGrid.innerHTML = `<div>No items found</div>`;
-      return;
-    }
-
-    itemsGrid.innerHTML = filtered.map(it => `
-      <article class="card">
-        <div class="thumb">
-          <img src="${sanitizeUrl(it.imageUrl)}" alt="item" onerror="this.style.display='none'">
-        </div>
-        <div class="body">
-          <span class="tag">${it.type}</span>
-          <h3>${escapeHtml(it.title)}</h3>
-          <p>${escapeHtml(it.description)}</p>
-
-          <p><b>Place:</b> ${escapeHtml(it.place)}</p>
-          <p><b>Occurred:</b> ${formatDate(it.date)}</p>
-          <p><b>Reported:</b> ${formatDateTime(it.reportedDate)}</p>
-          <p><b>Contact:</b> ${escapeHtml(it.contact)}</p>
-        </div>
-      </article>
-    `).join("");
-  }
-
-  /* ---------------------- SUBMIT FORM ---------------------- */
-  formEl.addEventListener("submit", async evt => {
-    evt.preventDefault();
-
-    if (uploadInProgress) {
-      alert("Please wait — image is still uploading.");
-      return;
-    }
-
-    const payload = {
-      action: "appendItem",
-      timestamp: new Date().toISOString(),
-      reportedDate: document.getElementById("reportedDate").value,
-      type: document.getElementById("type").value,
-      title: document.getElementById("title").value.trim(),
-      description: document.getElementById("desc").value.trim(),
-      place: document.getElementById("place").value.trim(),
-      date: document.getElementById("date").value,
-      imageUrl: imageUrlInput.value,
-      contact: document.getElementById("contact").value.trim()
-    };
-
-    submitBtn.disabled = true;
-
-    try {
-      const formData = new URLSearchParams(payload);
-      const res = await fetch(SHEET_API_URL, {
-        method: "POST",
-        body: formData
-      });
-
-      const json = await res.json();
-      if (!json.success) throw new Error("Server rejected");
-
-      alert("Item added ✔");
-      formEl.reset();
-      uploadStatus.textContent = "";
-      fetchItems();
-    } catch (err) {
-      alert("Submit failed: " + err.message);
-    }
-
-    submitBtn.disabled = false;
-  });
-
-  /* INIT */
-  fetchItems();
-});
+})();

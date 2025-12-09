@@ -1,379 +1,239 @@
-// updated script.js — Cloudinary unsigned upload + fallback to Worker upload
-// 1) If you use Cloudinary unsigned uploads, set CLOUD_NAME and UPLOAD_PRESET.
-// 2) If blank, the script will fallback to using your Worker (SHEET_API_URL) for image uploads.
-const PROXY_URL = 'https://lostfound.anandaswaroopa16.workers.dev'; // your Worker
-const SHEET_API_URL = PROXY_URL;
+/* ---------------------- CONFIG ---------------------- */
 
-// --- Cloudinary config (set these to use Cloudinary) ---
-const CLOUD_NAME = '';       // e.g. 'yourcloudname'  (leave blank to disable Cloudinary)
-const UPLOAD_PRESET = '';    // e.g. 'lostfound_unsigned'  (leave blank to disable Cloudinary)
+// Your Worker URL (for sheet data only — NOT for images)
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbw33RvD6HF4zognGBKK9PhLn5zSTiQFhsgEYqG4louIt71zhT4e5n-p7KOx467fHbiaVQ/exec";
 
-// --- small upload options ---
-const MAX_IMAGE_WIDTH = 600;   // downscale width in px (smaller => lower quality & faster upload)
-const IMAGE_QUALITY = 0.6;     // 0.0 - 1.0 (smaller => lower quality & smaller size)
-const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB limit
+// Cloudinary config (FINAL)
+const CLOUD_NAME = "do48yblyi";
+const UPLOAD_PRESET = "lostandfound";
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Elements
-  const logoWrap = document.getElementById('logoWrap');
-  const itemsGrid = document.getElementById('itemsGrid');
-  const itemsEmpty = document.getElementById('itemsEmpty');
-  const searchBox = document.getElementById('searchBox');
+// Image compression settings
+const MAX_IMAGE_WIDTH = 700;
+const IMAGE_QUALITY = 0.6;
 
-  const imageFileInput = document.getElementById('imageFile');
-  const imageUrlInput = document.getElementById('imageUrl');
-  const uploadStatus = document.getElementById('uploadStatus');
-  const submitBtn = document.getElementById('submitBtn');
-  const formEl = document.getElementById('itemForm');
-  const submitMsgEl = document.getElementById('submitMsg');
+/* ---------------------- MAIN SCRIPT ---------------------- */
+document.addEventListener("DOMContentLoaded", () => {
+
+  const imageFileInput = document.getElementById("imageFile");
+  const imageUrlInput  = document.getElementById("imageUrl");
+  const uploadStatus   = document.getElementById("uploadStatus");
+  const submitBtn      = document.getElementById("submitBtn");
+  const formEl         = document.getElementById("itemForm");
+
+  const itemsGrid      = document.getElementById("itemsGrid");
+  const itemsEmpty     = document.getElementById("itemsEmpty");
+  const searchBox      = document.getElementById("searchBox");
 
   let cachedItems = [];
   let uploadInProgress = false;
 
-  /* ---------- Utilities ---------- */
-  function escapeHtml(str = '') {
-    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
-  function parseDateValue(v) {
-    if(!v) return null;
-    const d = new Date(String(v));
-    if(!isNaN(d.getTime())) return d.getTime();
-    const p = Date.parse(String(v));
-    return isNaN(p) ? null : p;
-  }
-  function formatFriendlyDate(value) {
-    if(!value) return '';
-    const t = parseDateValue(value);
-    if(!t) return String(value).slice(0,20);
-    const d = new Date(t);
-    return d.toLocaleString([], { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-  }
-  function formatOccurrenceDate(value) {
-    if(!value) return '';
-    const s = String(value).trim();
-    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if(m) {
-      const year=+m[1], month=+m[2]-1, day=+m[3];
-      const d = new Date(year, month, day);
-      return d.toLocaleDateString([], { year:'numeric', month:'short', day:'numeric' });
-    }
-    const t = parseDateValue(s);
-    if(!t) return s;
-    return new Date(t).toLocaleDateString([], { year:'numeric', month:'short', day:'numeric' });
-  }
-  function sanitizeUrl(u='') {
-    if(!u) return '';
-    if(u.includes('drive.google.com') || u.includes('docs.google.com')) {
-      try {
-        if(u.indexOf('/file/d/') !== -1) {
-          const id = u.split('/file/d/')[1].split('/')[0];
-          if(id) return `https://drive.google.com/uc?id=${id}`;
-        }
-        if(u.indexOf('id=') !== -1) {
-          const id = u.split('id=')[1].split('&')[0];
-          if(id) return `https://drive.google.com/uc?id=${id}`;
-        }
-      } catch(e){}
-    }
-    try { return new URL(u).href; } catch(e){}
-    return u;
-  }
-  function placeholderSvgHtml(){
-    return `<svg class="placeholder-img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#f5f6f7"/><g fill="#c7c9cc"><rect x="10" y="10" width="44" height="12" rx="3"/><rect x="10" y="28" width="44" height="26" rx="3"/></g></svg>`;
-  }
-  function inlineSvgLogo(){
-    return `<svg class="placeholder-img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="56" height="56" aria-hidden="true"><rect width="64" height="64" rx="10" fill="#eaf9d6"/><g fill="#6f8a24"><circle cx="20" cy="24" r="6"/><rect x="10" y="36" width="20" height="6" rx="2"/><path d="M40 18h14v28H40z" fill="#cbeaa6"/><circle cx="47" cy="30" r="3" fill="#6f8a24"/></g></svg>`;
+  /* ---------------------- UTILITIES ---------------------- */
+  function escapeHtml(str = "") {
+    return String(str)
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;");
   }
 
-  /* ---------- Logo ---------- */
-  function loadLogo(){
-    if(!logoWrap) return;
-    logoWrap.innerHTML = '';
-    var img = new Image();
-    img.alt = 'Campus Logo';
-    img.onload = function(){ logoWrap.innerHTML=''; logoWrap.appendChild(img); };
-    img.onerror = function(){ logoWrap.innerHTML = inlineSvgLogo(); };
-    img.src = 'cmrit_logo.webp';
-  }
-  loadLogo();
-
-  /* ---------- Render items ---------- */
-  function normalizeItem(raw){
-    var it = {};
-    Object.keys(raw || {}).forEach(function(k){ it[k.trim()] = String(raw[k] || '').trim(); });
-    return {
-      title: it.title || it.Title || it.NAME || it.name || '',
-      description: it.description || it.Description || it.desc || '',
-      place: it.place || it.Place || '',
-      date: it.date || it.Date || '',
-      imageUrl: it.imageUrl || it.imageURL || it.Image || '',
-      contact: it.contact || it.Contact || '',
-      type: it.type || it.Type || '',
-      reportedDate: it.reportedDate || it.reported || it.timestamp || '',
-      timestamp: it.timestamp || it.Timestamp || '',
-      raw: it
-    };
+  function sanitizeUrl(url="") {
+    try { return new URL(url).href; } catch { return url; }
   }
 
-  function cardHtml(it){
-    var imgUrl = sanitizeUrl(it.imageUrl || '');
-    var thumb = imgUrl ? '<img loading="lazy" src="' + escapeHtml(imgUrl) + '" alt="' + escapeHtml(it.title||'item') + '">' : placeholderSvgHtml();
-    var tag = (it.type && it.type.toLowerCase() === 'found') ? '<span class="tag" style="background:#e8f6ff;color:#0b4f70">Found</span>' : '<span class="tag">Lost</span>';
-    var occurrenceText = formatOccurrenceDate(it.date);
-    var reportedText = formatFriendlyDate(it.reportedDate || it.timestamp);
-    return ''
-      + '<article class="card" role="article">'
-      +   '<div class="thumb">'+thumb+'</div>'
-      +   '<div class="body">'
-      +     '<div style="display:flex; gap:8px; align-items:center;">'
-      +       tag
-      +       '<h3 style="flex:1; margin:0">'+ escapeHtml(it.title || 'Untitled') +'</h3>'
-      +     '</div>'
-      +     '<div class="desc">'+ escapeHtml(it.description || '') +'</div>'
-      +     '<div class="meta">'
-      +       '<div><strong>Place:</strong> ' + escapeHtml(it.place || '—') + '</div>'
-      +       '<div><strong>Occurrence Date:</strong> ' + escapeHtml(occurrenceText || '—') + '</div>'
-      +       '<div><strong>Reported on:</strong> ' + escapeHtml(reportedText || '—') + '</div>'
-      +       '<div><strong>Contact:</strong> ' + escapeHtml(it.contact || '—') + '</div>'
-      +     '</div>'
-      +   '</div>'
-      + '</article>';
+  function formatDate(val){
+    if(!val) return "";
+    const d = new Date(val);
+    if(isNaN(d)) return val;
+    return d.toLocaleDateString("en-IN", {year:"numeric", month:"short", day:"numeric"});
   }
 
-  async function fetchItems(){
-    if(!itemsGrid) return;
-    itemsGrid.innerHTML = '<div class="muted" style="padding:12px">Loading items...</div>';
-    try{
-      if(!SHEET_API_URL || SHEET_API_URL.indexOf('REPLACE_WITH') !== -1) throw new Error('SHEET_API_URL not set. Edit script and add your Worker URL.');
-      var res = await fetch(SHEET_API_URL + '?action=getItems', { cache: 'no-cache', mode: 'cors' });
-      if(!res.ok) throw new Error('Network response not ok: ' + res.status);
-      var json = await res.json();
-      var items = Array.isArray(json) ? json : (json.items || []);
-      cachedItems = items.map(normalizeItem);
-      // newest first
-      cachedItems.sort(function(a,b){
-        var ta = parseDateValue(b.reportedDate || b.timestamp || '') || 0;
-        var tb = parseDateValue(a.reportedDate || a.timestamp || '') || 0;
-        return ta - tb;
-      });
-      renderItems();
-    } catch(err){
-      console.error('Error fetching items:', err);
-      itemsGrid.innerHTML = '<div class="error" style="padding:12px">Could not load items. ' + escapeHtml(String(err.message || err)) + '</div>';
-    }
+  function formatDateTime(val){
+    if(!val) return "";
+    const d = new Date(val);
+    if(isNaN(d)) return val;
+    return d.toLocaleString("en-IN", {year:"numeric", month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"});
   }
 
-  function renderItems(){
-    if(!itemsGrid) return;
-    var q = searchBox ? searchBox.value.trim().toLowerCase() : '';
-    if(!cachedItems || cachedItems.length === 0){
-      itemsGrid.innerHTML = '';
-      if(itemsEmpty) itemsEmpty.style.display = 'block';
-      return;
-    }
-    if(itemsEmpty) itemsEmpty.style.display = 'none';
-    var filtered = cachedItems.filter(function(it){
-      return ('' + (it.title + ' ' + it.description + ' ' + it.place + ' ' + it.contact + ' ' + it.type)).toLowerCase().indexOf(q) !== -1;
-    });
-    if(filtered.length === 0){
-      itemsGrid.innerHTML = '<div class="muted" style="padding:12px">No matches for "<strong>' + escapeHtml(q) + '</strong>"</div>';
-      return;
-    }
-    itemsGrid.innerHTML = filtered.map(cardHtml).join('');
-    // attach image error fallback
-    Array.prototype.forEach.call(document.querySelectorAll('.card .thumb img'), function(img){
-      img.addEventListener('error', function(){
-        img.style.display = 'none';
-        var p = img.parentElement;
-        if(p && !p.querySelector('svg')) p.insertAdjacentHTML('beforeend', placeholderSvgHtml());
-      });
-    });
-  }
+  /* ---------------------- IMAGE COMPRESSION ---------------------- */
+  function compressImage(file){
+    return new Promise((resolve,reject)=>{
+      const reader = new FileReader();
+      reader.onload = e =>{
+        const img = new Image();
+        img.onload = ()=>{
+          const canvas = document.createElement("canvas");
+          const ratio = img.width / img.height;
+          canvas.width = Math.min(MAX_IMAGE_WIDTH, img.width);
+          canvas.height = canvas.width / ratio;
 
-  /* ---------- Image compression & Cloudinary upload ---------- */
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img,0,0,canvas.width,canvas.height);
 
-  function readFileAsDataURL(file){
-    return new Promise(function(resolve, reject){
-      var r = new FileReader();
-      r.onload = function(){ resolve(r.result); };
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
-  }
-
-  function compressImageFile(file, maxWidth, quality) {
-    return new Promise(function(resolve, reject){
-      var img = new Image();
-      var reader = new FileReader();
-      reader.onload = function(e){
-        img.onload = function(){
-          var ratio = img.width / img.height;
-          var w = Math.min(maxWidth, img.width);
-          var h = Math.round(w / ratio);
-          var canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          var ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          canvas.toBlob(function(blob){
-            if(!blob) return reject(new Error('Compression failed'));
-            resolve(blob);
-          }, 'image/jpeg', quality);
+          canvas.toBlob(
+            blob => blob ? resolve(blob) : reject("Compression failed"),
+            "image/jpeg",
+            IMAGE_QUALITY
+          );
         };
-        img.onerror = function(err){ reject(err); };
         img.src = e.target.result;
       };
-      reader.onerror = reject;
       reader.readAsDataURL(file);
     });
   }
 
-  async function uploadToCloudinary(blob, filename) {
-    var form = new FormData();
-    form.append('file', blob, filename || 'upload.jpg');
-    form.append('upload_preset', UPLOAD_PRESET);
-    var url = 'https://api.cloudinary.com/v1_1/' + encodeURIComponent(CLOUD_NAME) + '/image/upload';
-    var res = await fetch(url, { method: 'POST', body: form });
-    if(!res.ok) {
-      var txt = await res.text();
-      throw new Error('Cloudinary upload failed: ' + res.status + ' ' + txt.slice(0,200));
-    }
-    return await res.json();
-  }
+  /* ---------------------- CLOUDINARY UPLOAD ---------------------- */
+  async function uploadToCloudinary(file) {
+    const compressed = await compressImage(file);
+    const formData = new FormData();
+    formData.append("file", compressed, file.name);
+    formData.append("upload_preset", UPLOAD_PRESET);
 
-  // Fallback upload to Worker (existing Drive flow) if Cloudinary config not set
-  async function uploadToWorkerBase64(dataUrl, filename) {
-    var params = new URLSearchParams();
-    params.append('action', 'uploadImage');
-    params.append('filename', filename || ('upload_' + Date.now() + '.jpg'));
-    params.append('imageBase64', dataUrl);
-    var res = await fetch(SHEET_API_URL, { method: 'POST', body: params, mode: 'cors' });
-    var text = await res.text();
-    var j;
-    try { j = JSON.parse(text); } catch (e) { j = { success:false, message:'Invalid JSON', raw:text }; }
-    return j;
-  }
+    uploadStatus.textContent = "Uploading image...";
 
-  // High-level: compress then upload (Cloudinary if configured, else worker)
-  async function compressAndUploadFile(file) {
-    if(!file) throw new Error('No file');
-    if(file.size > MAX_FILE_SIZE_BYTES) throw new Error('Image too large. Choose image < ' + (MAX_FILE_SIZE_BYTES / (1024*1024)) + ' MB.');
+    const res = await fetch(
+      `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+      { method: "POST", body: formData }
+    );
 
-    // compress
-    var blob = await compressImageFile(file, MAX_IMAGE_WIDTH, IMAGE_QUALITY);
-
-    // if Cloudinary configured -> upload there
-    if(CLOUD_NAME && UPLOAD_PRESET) {
-      var cloudResp = await uploadToCloudinary(blob, file.name || ('upload_' + Date.now() + '.jpg'));
-      // cloudResp.secure_url contains the direct link
-      return { success: true, url: cloudResp.secure_url || cloudResp.url, raw: cloudResp };
+    if (!res.ok) {
+      throw new Error("Cloudinary upload failed");
     }
 
-    // else fallback to base64 Worker upload
-    // convert blob to dataURL
-    var dataUrl = await new Promise(function(resolve, reject){
-      var r = new FileReader();
-      r.onload = function(){ resolve(r.result); };
-      r.onerror = reject;
-      r.readAsDataURL(blob);
-    });
-    return await uploadToWorkerBase64(dataUrl, file.name);
+    const json = await res.json();
+    return json.secure_url;
   }
 
-  /* ---------- Image input handler ---------- */
-  if(imageFileInput){
-    imageFileInput.addEventListener('change', async function(ev){
-      var f = ev.target.files && ev.target.files[0];
-      if(!f) return;
-      if(uploadInProgress){ alert('Another upload in progress. Please wait.'); return; }
+  /* ---------------------- IMAGE INPUT HANDLER ---------------------- */
+  if (imageFileInput) {
+    imageFileInput.addEventListener("change", async evt => {
+      const file = evt.target.files[0];
+      if (!file) return;
+
       uploadInProgress = true;
-      if(uploadStatus) uploadStatus.textContent = 'Preparing image...';
-      if(submitBtn) submitBtn.disabled = true;
-      try{
-        uploadStatus.textContent = 'Compressing & uploading...';
-        var result = await compressAndUploadFile(f);
-        if(!result) throw new Error('Upload returned no result');
-        if(result.success === false) throw new Error(result.message || 'Upload failed');
-        var imageUrl = result.url || (result.id ? ('https://drive.google.com/uc?id=' + result.id) : '');
-        if(!imageUrl) throw new Error('No returned image URL from upload provider');
-        if(imageUrlInput) imageUrlInput.value = imageUrl;
-        if(uploadStatus) uploadStatus.textContent = 'Uploaded ✓';
-        console.log('Upload succeeded:', imageUrl, result.raw || '');
-      } catch(err){
-        console.error('Upload error', err);
-        if(uploadStatus) uploadStatus.textContent = 'Upload failed';
-        alert('Image upload failed: ' + String(err.message || err));
-      } finally {
-        uploadInProgress = false;
-        if(submitBtn) submitBtn.disabled = false;
+      submitBtn.disabled = true;
+      uploadStatus.textContent = "Starting upload...";
+
+      try {
+        const url = await uploadToCloudinary(file);
+        imageUrlInput.value = url;
+        uploadStatus.textContent = "Image uploaded ✔";
+      } catch (err) {
+        console.error(err);
+        alert("Image upload failed: " + err.message);
+        uploadStatus.textContent = "Upload failed";
       }
+
+      uploadInProgress = false;
+      submitBtn.disabled = false;
     });
   }
 
-  /* ---------- Form submit ---------- */
-  if(formEl){
-    formEl.addEventListener('submit', async function(ev){
-      ev.preventDefault();
-      ev.stopPropagation();
-      var titleEl = document.getElementById('title');
-      if(!titleEl || !titleEl.value.trim()){
-        alert('Please tell us what the item is.');
-        if(titleEl) titleEl.focus();
-        return;
-      }
-      if(uploadInProgress){
-        alert('Please wait for the image upload to complete before submitting.');
-        return;
-      }
-      submitMsgEl.textContent = 'Submitting...';
-      if(submitBtn) submitBtn.disabled = true;
-      var payload = {
-        timestamp: new Date().toISOString(),
-        reportedDate: document.getElementById('reportedDate') ? document.getElementById('reportedDate').value || new Date().toISOString() : new Date().toISOString(),
-        type: document.getElementById('type') ? document.getElementById('type').value : '',
-        title: document.getElementById('title') ? document.getElementById('title').value.trim() : '',
-        description: document.getElementById('desc') ? document.getElementById('desc').value.trim() : '',
-        place: document.getElementById('place') ? document.getElementById('place').value.trim() : '',
-        date: document.getElementById('date') ? document.getElementById('date').value || '' : '',
-        imageUrl: imageUrlInput ? imageUrlInput.value.trim() : '',
-        contact: document.getElementById('contact') ? document.getElementById('contact').value.trim() : ''
-      };
-      try{
-        var params = new URLSearchParams();
-        Object.keys(payload).forEach(function(k){ params.append(k, payload[k] || ''); });
-        params.append('action','appendItem'); // matches Apps Script appendItem handler
-        var res = await fetch(SHEET_API_URL, { method: 'POST', body: params, mode: 'cors' });
-        if(!res.ok) throw new Error('Network response not ok: ' + res.status);
-        var data = await res.json();
-        if(data && (data.success === true || data === true)){
-          submitMsgEl.textContent = 'Added ✓';
-          cachedItems.unshift(normalizeItem(payload));
-          renderItems();
-          formEl.reset();
-          if(uploadStatus) uploadStatus.textContent = '';
-          setTimeout(function(){ submitMsgEl.textContent = ''; }, 900);
-        } else {
-          throw new Error((data && data.message) ? data.message : 'Unknown server response');
-        }
-      } catch(err){
-        console.error('Submit error', err);
-        submitMsgEl.textContent = 'Failed to submit';
-        alert('Submit failed: ' + String(err.message || err) + '\nCheck that the Worker URL is correct and Apps Script is deployed.');
-      } finally {
-        if(submitBtn) submitBtn.disabled = false;
-      }
-    });
+  /* ---------------------- FETCH ITEMS ---------------------- */
+  async function fetchItems() {
+    itemsGrid.innerHTML = `<div>Loading...</div>`;
+
+    try {
+      const res = await fetch(`${SHEET_API_URL}?action=getItems`);
+      if (!res.ok) throw new Error("Network error: " + res.status);
+      const data = await res.json();
+
+      cachedItems = (data.items || []).map(it => ({
+        ...it,
+        title: it.title || "",
+        description: it.description || "",
+        place: it.place || "",
+        date: it.date || "",
+        imageUrl: it.imageUrl || "",
+        contact: it.contact || "",
+        type: it.type || "",
+        reportedDate: it.reportedDate || it.timestamp
+      }));
+
+      renderItems();
+    } catch (err) {
+      itemsGrid.innerHTML = `<div style="color:red">Failed to load items</div>`;
+      console.error(err);
+    }
   }
 
-  /* ---------- Search debounce ---------- */
-  var searchTimer = 0;
-  if(searchBox){
-    searchBox.addEventListener('input', function(){
-      clearTimeout(searchTimer);
-      searchTimer = setTimeout(renderItems, 150);
-    });
+  /* ---------------------- RENDER ITEMS ---------------------- */
+  function renderItems() {
+    const q = searchBox.value.trim().toLowerCase();
+
+    const filtered = cachedItems.filter(it => (
+      (it.title + it.description + it.place + it.type + it.contact)
+      .toLowerCase()
+      .includes(q)
+    ));
+
+    if (filtered.length === 0) {
+      itemsGrid.innerHTML = `<div>No items found</div>`;
+      return;
+    }
+
+    itemsGrid.innerHTML = filtered.map(it => `
+      <article class="card">
+        <div class="thumb">
+          <img src="${sanitizeUrl(it.imageUrl)}" alt="item" onerror="this.style.display='none'">
+        </div>
+        <div class="body">
+          <span class="tag">${it.type}</span>
+          <h3>${escapeHtml(it.title)}</h3>
+          <p>${escapeHtml(it.description)}</p>
+
+          <p><b>Place:</b> ${escapeHtml(it.place)}</p>
+          <p><b>Occurred:</b> ${formatDate(it.date)}</p>
+          <p><b>Reported:</b> ${formatDateTime(it.reportedDate)}</p>
+          <p><b>Contact:</b> ${escapeHtml(it.contact)}</p>
+        </div>
+      </article>
+    `).join("");
   }
 
-  /* Init */
+  /* ---------------------- SUBMIT FORM ---------------------- */
+  formEl.addEventListener("submit", async evt => {
+    evt.preventDefault();
+
+    if (uploadInProgress) {
+      alert("Please wait — image is still uploading.");
+      return;
+    }
+
+    const payload = {
+      action: "appendItem",
+      timestamp: new Date().toISOString(),
+      reportedDate: document.getElementById("reportedDate").value,
+      type: document.getElementById("type").value,
+      title: document.getElementById("title").value.trim(),
+      description: document.getElementById("desc").value.trim(),
+      place: document.getElementById("place").value.trim(),
+      date: document.getElementById("date").value,
+      imageUrl: imageUrlInput.value,
+      contact: document.getElementById("contact").value.trim()
+    };
+
+    submitBtn.disabled = true;
+
+    try {
+      const formData = new URLSearchParams(payload);
+      const res = await fetch(SHEET_API_URL, {
+        method: "POST",
+        body: formData
+      });
+
+      const json = await res.json();
+      if (!json.success) throw new Error("Server rejected");
+
+      alert("Item added ✔");
+      formEl.reset();
+      uploadStatus.textContent = "";
+      fetchItems();
+    } catch (err) {
+      alert("Submit failed: " + err.message);
+    }
+
+    submitBtn.disabled = false;
+  });
+
+  /* INIT */
   fetchItems();
 });

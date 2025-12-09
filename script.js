@@ -1,7 +1,7 @@
 /* ---------------------- CONFIG ---------------------- */
 
 // Your Worker URL (for sheet data only — NOT for images)
-const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbw33RvD6HF4zognGBKK9PhLn5zSTiQFhsgEYqG4louIt71zhT4e5n-p7KOx467fHbiaVQ/exec";
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxgfPFloo-72SZ-VedN3x2G0OaSrSvRGQ7sR3a22btFNhq3-9J_-lzyuuaxFTLNzHeE0g/exec";
 
 // Cloudinary config (FINAL)
 const CLOUD_NAME = "do48yblyi";

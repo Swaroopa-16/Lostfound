@@ -56,15 +56,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* ---------- Image compression & Cloudinary upload ---------- */
 
-  function readFileAsDataURL(file){
-    return new Promise(function(resolve, reject){
-      var r = new FileReader();
-      r.onload = function(){ resolve(r.result); };
-      r.onerror = reject;
-      r.readAsDataURL(file);
-    });
-  }
-
   function compressImageFile(file, maxWidth, quality) {
     return new Promise(function(resolve, reject){
       var reader = new FileReader();

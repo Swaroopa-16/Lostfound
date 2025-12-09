@@ -1,6 +1,17 @@
-// updated script.js — CORS-safe, robust, ready for GitHub Pages
-const PROXY_URL = 'https://lostfound.anandaswaroopa16.workers.dev'; // <-- replace if your worker URL differs
+// updated script.js — Cloudinary unsigned upload + fallback to Worker upload
+// 1) If you use Cloudinary unsigned uploads, set CLOUD_NAME and UPLOAD_PRESET.
+// 2) If blank, the script will fallback to using your Worker (SHEET_API_URL) for image uploads.
+const PROXY_URL = 'https://lostfound.anandaswaroopa16.workers.dev'; // your Worker
 const SHEET_API_URL = PROXY_URL;
+
+// --- Cloudinary config (set these to use Cloudinary) ---
+const CLOUD_NAME = '';       // e.g. 'yourcloudname'  (leave blank to disable Cloudinary)
+const UPLOAD_PRESET = '';    // e.g. 'lostfound_unsigned'  (leave blank to disable Cloudinary)
+
+// --- small upload options ---
+const MAX_IMAGE_WIDTH = 600;   // downscale width in px (smaller => lower quality & faster upload)
+const IMAGE_QUALITY = 0.6;     // 0.0 - 1.0 (smaller => lower quality & smaller size)
+const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8 MB limit
 
 document.addEventListener('DOMContentLoaded', () => {
   // Elements
@@ -67,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
     try { return new URL(u).href; } catch(e){}
     return u;
   }
-
   function placeholderSvgHtml(){
     return `<svg class="placeholder-img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="8" fill="#f5f6f7"/><g fill="#c7c9cc"><rect x="10" y="10" width="44" height="12" rx="3"/><rect x="10" y="28" width="44" height="26" rx="3"/></g></svg>`;
   }
@@ -180,7 +190,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  /* ---------- Image upload ---------- */
+  /* ---------- Image compression & Cloudinary upload ---------- */
+
   function readFileAsDataURL(file){
     return new Promise(function(resolve, reject){
       var r = new FileReader();
@@ -190,41 +201,104 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function compressImageFile(file, maxWidth, quality) {
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      var reader = new FileReader();
+      reader.onload = function(e){
+        img.onload = function(){
+          var ratio = img.width / img.height;
+          var w = Math.min(maxWidth, img.width);
+          var h = Math.round(w / ratio);
+          var canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          var ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          canvas.toBlob(function(blob){
+            if(!blob) return reject(new Error('Compression failed'));
+            resolve(blob);
+          }, 'image/jpeg', quality);
+        };
+        img.onerror = function(err){ reject(err); };
+        img.src = e.target.result;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadToCloudinary(blob, filename) {
+    var form = new FormData();
+    form.append('file', blob, filename || 'upload.jpg');
+    form.append('upload_preset', UPLOAD_PRESET);
+    var url = 'https://api.cloudinary.com/v1_1/' + encodeURIComponent(CLOUD_NAME) + '/image/upload';
+    var res = await fetch(url, { method: 'POST', body: form });
+    if(!res.ok) {
+      var txt = await res.text();
+      throw new Error('Cloudinary upload failed: ' + res.status + ' ' + txt.slice(0,200));
+    }
+    return await res.json();
+  }
+
+  // Fallback upload to Worker (existing Drive flow) if Cloudinary config not set
+  async function uploadToWorkerBase64(dataUrl, filename) {
+    var params = new URLSearchParams();
+    params.append('action', 'uploadImage');
+    params.append('filename', filename || ('upload_' + Date.now() + '.jpg'));
+    params.append('imageBase64', dataUrl);
+    var res = await fetch(SHEET_API_URL, { method: 'POST', body: params, mode: 'cors' });
+    var text = await res.text();
+    var j;
+    try { j = JSON.parse(text); } catch (e) { j = { success:false, message:'Invalid JSON', raw:text }; }
+    return j;
+  }
+
+  // High-level: compress then upload (Cloudinary if configured, else worker)
+  async function compressAndUploadFile(file) {
+    if(!file) throw new Error('No file');
+    if(file.size > MAX_FILE_SIZE_BYTES) throw new Error('Image too large. Choose image < ' + (MAX_FILE_SIZE_BYTES / (1024*1024)) + ' MB.');
+
+    // compress
+    var blob = await compressImageFile(file, MAX_IMAGE_WIDTH, IMAGE_QUALITY);
+
+    // if Cloudinary configured -> upload there
+    if(CLOUD_NAME && UPLOAD_PRESET) {
+      var cloudResp = await uploadToCloudinary(blob, file.name || ('upload_' + Date.now() + '.jpg'));
+      // cloudResp.secure_url contains the direct link
+      return { success: true, url: cloudResp.secure_url || cloudResp.url, raw: cloudResp };
+    }
+
+    // else fallback to base64 Worker upload
+    // convert blob to dataURL
+    var dataUrl = await new Promise(function(resolve, reject){
+      var r = new FileReader();
+      r.onload = function(){ resolve(r.result); };
+      r.onerror = reject;
+      r.readAsDataURL(blob);
+    });
+    return await uploadToWorkerBase64(dataUrl, file.name);
+  }
+
+  /* ---------- Image input handler ---------- */
   if(imageFileInput){
     imageFileInput.addEventListener('change', async function(ev){
       var f = ev.target.files && ev.target.files[0];
       if(!f) return;
-      if(f.size > 8 * 1024 * 1024){ alert('Image too large. Choose an image < 8 MB.'); imageFileInput.value=''; return; }
       if(uploadInProgress){ alert('Another upload in progress. Please wait.'); return; }
       uploadInProgress = true;
-      if(uploadStatus) uploadStatus.textContent = 'Uploading image...';
+      if(uploadStatus) uploadStatus.textContent = 'Preparing image...';
       if(submitBtn) submitBtn.disabled = true;
       try{
-        var dataUrl = await readFileAsDataURL(f);
-        var params = new URLSearchParams();
-        params.append('action','uploadImage');
-        params.append('filename', f.name);
-        params.append('imageBase64', dataUrl);
-        var res = await fetch(SHEET_API_URL, { method: 'POST', body: params, mode: 'cors' });
-        var text = await res.text();
-        var j;
-        try { j = JSON.parse(text); } catch(e) { j = { success:false, message:'Invalid JSON', raw:text }; }
-        if(!res.ok) throw new Error('Server returned status ' + res.status + (j && j.message ? (': ' + j.message) : ''));
-        if(j && j.success){
-          var imageUrl = '';
-          if(j.url) imageUrl = j.url;
-          else if(j.id) imageUrl = 'https://drive.google.com/uc?id=' + j.id;
-          if(imageUrl){
-            if(imageUrlInput) imageUrlInput.value = imageUrl;
-            if(uploadStatus) uploadStatus.textContent = 'Uploaded ✓';
-            console.log('Upload succeeded:', imageUrl);
-          } else {
-            if(uploadStatus) uploadStatus.textContent = '';
-            alert('Image uploaded but server did not return a direct link. Paste a public image URL manually.');
-          }
-        } else {
-          throw new Error(j && j.message ? j.message : 'Upload failed');
-        }
+        uploadStatus.textContent = 'Compressing & uploading...';
+        var result = await compressAndUploadFile(f);
+        if(!result) throw new Error('Upload returned no result');
+        if(result.success === false) throw new Error(result.message || 'Upload failed');
+        var imageUrl = result.url || (result.id ? ('https://drive.google.com/uc?id=' + result.id) : '');
+        if(!imageUrl) throw new Error('No returned image URL from upload provider');
+        if(imageUrlInput) imageUrlInput.value = imageUrl;
+        if(uploadStatus) uploadStatus.textContent = 'Uploaded ✓';
+        console.log('Upload succeeded:', imageUrl, result.raw || '');
       } catch(err){
         console.error('Upload error', err);
         if(uploadStatus) uploadStatus.textContent = 'Upload failed';
@@ -255,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if(submitBtn) submitBtn.disabled = true;
       var payload = {
         timestamp: new Date().toISOString(),
-        reportedDate: new Date().toISOString(),
+        reportedDate: document.getElementById('reportedDate') ? document.getElementById('reportedDate').value || new Date().toISOString() : new Date().toISOString(),
         type: document.getElementById('type') ? document.getElementById('type').value : '',
         title: document.getElementById('title') ? document.getElementById('title').value.trim() : '',
         description: document.getElementById('desc') ? document.getElementById('desc').value.trim() : '',
@@ -267,6 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
       try{
         var params = new URLSearchParams();
         Object.keys(payload).forEach(function(k){ params.append(k, payload[k] || ''); });
+        params.append('action','appendItem'); // matches Apps Script appendItem handler
         var res = await fetch(SHEET_API_URL, { method: 'POST', body: params, mode: 'cors' });
         if(!res.ok) throw new Error('Network response not ok: ' + res.status);
         var data = await res.json();

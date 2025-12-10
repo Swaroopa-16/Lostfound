@@ -5,7 +5,7 @@
    - No logic changes beyond robust Cloudinary handling
 */
 
-const SHEET_API_URL = "https://lostfound.anandaswaroopa16.workers.dev"; // keep your current endpoint
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxgfPFloo-72SZ-VedN3x2G0OaSrSvRGQ7sR3a22btFNhq3-9J_-lzyuuaxFTLNzHeE0g/exec"; // keep your current endpoint
 const CLOUD_NAME = "do48yblyi";
 const UPLOAD_PRESET = "lostandfound";
 

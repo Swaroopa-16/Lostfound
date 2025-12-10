@@ -3,7 +3,7 @@
    - Cloudinary settings: CLOUD_NAME and UPLOAD_PRESET set below (do not change other logic)
 */
 
-const SHEET_API_URL = "PASTE_FINAL_SCRIPT_URL_HERE"; // <-- REPLACE with final script.googleusercontent.com URL
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyWvs4CwAnUyrqV4NWk6TBxMiHDlyJXcR8yE_bs8b3lksE3-G9FjFytLjhbbECz-4gLQA/exec"; // <-- REPLACE with final script.googleusercontent.com URL
 const CLOUD_NAME = "do48yblyi";
 const UPLOAD_PRESET = "lostandfound";
 

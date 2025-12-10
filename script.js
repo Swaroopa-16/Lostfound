@@ -2,7 +2,7 @@
    Replace your existing script.js with this file (no other changes required).
 */
 
-const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyWvs4CwAnUyrqV4NWk6TBxMiHDlyJXcR8yE_bs8b3lksE3-G9FjFytLjhbbECz-4gLQA/exec"; // <-- keep your final Apps Script URL
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxzZKBmgiWUng0nf2SKUI88gzLDmwvZi6DrqfRM_vgh9F3iLvOMvEbjLJsJPAIDA70kgA/exec"; // <-- keep your final Apps Script URL
 const CLOUD_NAME = "do48yblyi";
 const UPLOAD_PRESET = "lostandfound";
 

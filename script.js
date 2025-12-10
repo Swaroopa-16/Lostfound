@@ -1,9 +1,8 @@
-/* final script.js
-   - Replace SHEET_API_URL value with final script.googleusercontent.com URL from Apps Script deploy
-   - Cloudinary settings: CLOUD_NAME and UPLOAD_PRESET set below (do not change other logic)
+/* script.js - updated (logo fallback + robust upload fallback + submit waits for upload)
+   Replace your existing script.js with this file (no other changes required).
 */
 
-const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyWvs4CwAnUyrqV4NWk6TBxMiHDlyJXcR8yE_bs8b3lksE3-G9FjFytLjhbbECz-4gLQA/exec"; // <-- REPLACE with final script.googleusercontent.com URL
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyWvs4CwAnUyrqV4NWk6TBxMiHDlyJXcR8yE_bs8b3lksE3-G9FjFytLjhbbECz-4gLQA/exec"; // <-- keep your final Apps Script URL
 const CLOUD_NAME = "do48yblyi";
 const UPLOAD_PRESET = "lostandfound";
 
@@ -23,7 +22,22 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchBox      = document.getElementById("searchBox");
   const logoImg        = document.getElementById("cmrit_logo_img");
 
-  try { if (logoImg) logoImg.src = './assets/cmrit_logo.webp'; } catch(e){}
+  // --- Logo fix: try repo root first, hide alt on error ---
+  try {
+    if (logoImg) {
+      logoImg.src = './cmrit_logo.webp';
+      logoImg.onerror = function() {
+        // try assets folder as fallback
+        if (!logoImg._triedAssets) {
+          logoImg._triedAssets = true;
+          logoImg.src = './assets/cmrit_logo.webp';
+          return;
+        }
+        // hide broken image and show nothing
+        logoImg.style.display = 'none';
+      };
+    }
+  } catch(e){ console.warn("logo setup failed", e); }
 
   window.uploadInProgress = false;
   window.cachedItems = window.cachedItems || [];
@@ -102,6 +116,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
       try {
         const blob = await compressImageFile(file, MAX_IMAGE_WIDTH, IMAGE_QUALITY);
+
+        // Try cloudinary upload; on failure fallback to data URL
         try {
           const cloudResp = await uploadBlobToCloudinary(blob, file.name);
           log("Cloudinary parsed response:", cloudResp);
@@ -116,19 +132,23 @@ document.addEventListener("DOMContentLoaded", () => {
           showPreview(imageUrl);
           if(uploadStatus) uploadStatus.textContent = "Uploaded ✓";
         } catch(cloudErr){
-          console.error("Cloudinary upload failed:", cloudErr);
-          const fr = new FileReader();
-          await new Promise((resolve) => {
-            fr.onload = () => {
-              const dataUrl = fr.result;
-              if(imageUrlInput) imageUrlInput.value = dataUrl;
-              showPreview(dataUrl);
-              if(uploadStatus) uploadStatus.textContent = "Preview ready (data URL)";
-              resolve();
-            };
-            fr.onerror = () => { if(uploadStatus) uploadStatus.textContent = "Upload failed"; resolve(); };
-            fr.readAsDataURL(blob);
-          });
+          console.warn("Cloudinary upload failed; falling back to data URL:", cloudErr);
+          // Create data URL from blob and set it (so form can submit)
+          try {
+            const fr = new FileReader();
+            const dataUrl = await new Promise((resolve, reject) => {
+              fr.onload = () => resolve(fr.result);
+              fr.onerror = () => reject(new Error("Failed to read blob as data URL"));
+              fr.readAsDataURL(blob);
+            });
+            if(imageUrlInput) imageUrlInput.value = dataUrl;
+            showPreview(dataUrl);
+            if(uploadStatus) uploadStatus.textContent = "Uploaded as preview (data URL)";
+          } catch(e){
+            console.error("fallback dataURL failed", e);
+            if(uploadStatus) uploadStatus.textContent = "Upload failed";
+            throw e;
+          }
         }
       } catch(err){
         console.error("Image upload flow error:", err);
@@ -214,9 +234,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if(formEl){
     try { const clone = formEl.cloneNode(true); formEl.parentNode.replaceChild(clone, formEl); window.formEl = clone; } catch(e){ window.formEl = formEl; }
+
     window.formEl.addEventListener('submit', async (ev) => {
       ev.preventDefault(); ev.stopPropagation();
-      if(window.uploadInProgress){ alert("Please wait until image upload completes."); return; }
+
+      // wait briefly for any ongoing upload (max wait loop)
+      let waited = 0;
+      while(window.uploadInProgress && waited < 10000){
+        await new Promise(r => setTimeout(r, 200));
+        waited += 200;
+      }
+      if(window.uploadInProgress){
+        alert("Image upload is still in progress. Please wait a moment and try again.");
+        return;
+      }
+
       const titleEl = document.getElementById('title');
       if(!titleEl || !titleEl.value.trim()){ alert("Please enter the item name."); if(titleEl) titleEl.focus(); return; }
 

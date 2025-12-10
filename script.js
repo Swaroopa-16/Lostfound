@@ -1,20 +1,20 @@
-/* updated script.js
-   - Ensures Cloudinary response is handled reliably:
-     sets #imageUrl to secure_url (or builds from public_id), shows preview
-   - Keeps existing upload, preview, fetch, submit flows and auto reportedDate
-   - No logic changes beyond robust Cloudinary handling
+/* final script.js
+   - Cloudinary upload (client-side)
+   - Auto reportedDate
+   - Submit -> Apps Script (SHEET_API_URL)
+   - Fetch items and render
+   - Be sure to replace SHEET_API_URL with your final script.googleusercontent.com URL
 */
 
-const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbxgfPFloo-72SZ-VedN3x2G0OaSrSvRGQ7sR3a22btFNhq3-9J_-lzyuuaxFTLNzHeE0g/exec"; // keep your current endpoint
-const CLOUD_NAME = "do48yblyi";
-const UPLOAD_PRESET = "lostandfound";
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzw6YVu3-aEfIhBQt1ECFAhgJ1q54k5lBYZmdcwk6yu0hc7dqFTYNnmwhDFjSdrdwJdpw/exec"; // <<-- REPLACE me
+const CLOUD_NAME = "do48yblyi";      // your cloudinary cloud name
+const UPLOAD_PRESET = "lostandfound"; // your unsigned preset name
 
 const MAX_IMAGE_WIDTH = 700;
 const IMAGE_QUALITY = 0.6;
 const FETCH_RETRIES = 2;
 
 document.addEventListener("DOMContentLoaded", () => {
-  // DOM refs (defensive)
   const formEl = document.getElementById("itemForm");
   const imageFileInput = document.getElementById("imageFile");
   const imageUrlInput  = document.getElementById("imageUrl");
@@ -24,6 +24,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const itemsGrid      = document.getElementById("itemsGrid");
   const itemsEmpty     = document.getElementById("itemsEmpty");
   const searchBox      = document.getElementById("searchBox");
+  const logoImg        = document.getElementById("cmrit_logo_img");
+
+  // try to load logo from assets (safe)
+  try { if (logoImg) logoImg.src = './assets/cmrit_logo.webp'; } catch(e){}
 
   window.uploadInProgress = false;
   window.cachedItems = window.cachedItems || [];
@@ -32,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
   function escapeHtml(s=""){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
   function sanitizeUrl(u=""){ try{ return new URL(u).href; }catch(e){ return u||""; } }
 
-  /* ---------- preview helper ---------- */
+  /* preview helper */
   function showPreview(url){
     try {
       let wrap = document.getElementById("imagePreviewWrap");
@@ -48,13 +52,13 @@ document.addEventListener("DOMContentLoaded", () => {
       img.addEventListener("error", ()=> img.style.display='none');
       wrap.appendChild(img);
       const a = document.createElement("a");
-      a.href = url; a.target="_blank"; a.rel="noopener"; a.textContent = "Open image";
+      a.href = url; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Open image";
       a.style.fontSize = "13px"; a.style.marginLeft="8px"; a.style.color = "#0b6";
       wrap.appendChild(a);
     } catch(e){ log("showPreview failed", e); }
   }
 
-  /* ---------- compression ---------- */
+  /* image compression */
   function compressImageFile(file, maxWidth, quality){
     return new Promise((resolve,reject)=>{
       const reader = new FileReader();
@@ -76,14 +80,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ---------- Cloudinary upload (with robust response handling) ---------- */
+  /* upload to Cloudinary */
   async function uploadBlobToCloudinary(blob, filename){
     const form = new FormData();
     form.append("file", blob, filename || ("upload_" + Date.now() + ".jpg"));
     form.append("upload_preset", UPLOAD_PRESET);
     const url = "https://api.cloudinary.com/v1_1/" + encodeURIComponent(CLOUD_NAME) + "/image/upload";
     log("upload ->", url, "preset=", UPLOAD_PRESET);
-
     const resp = await fetch(url, { method: "POST", body: form });
     const text = await resp.text();
     log("Cloudinary raw status=", resp.status, "text-start=", text.slice(0,400));
@@ -95,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return json;
   }
 
-  /* ---------- File change handler (integrates cloudResp handling) ---------- */
+  /* file input handler */
   if(imageFileInput){
     imageFileInput.addEventListener("change", async (ev) => {
       const file = ev.target.files && ev.target.files[0];
@@ -106,49 +109,24 @@ document.addEventListener("DOMContentLoaded", () => {
       if(submitBtn) submitBtn.disabled = true;
 
       try {
-        log("Selected file:", file.name, file.size, file.type);
         const blob = await compressImageFile(file, MAX_IMAGE_WIDTH, IMAGE_QUALITY);
-        log("Compressed size:", blob.size);
         try {
           const cloudResp = await uploadBlobToCloudinary(blob, file.name);
           log("Cloudinary parsed response:", cloudResp);
-
-          // === START: robust handling of cloudResp (sets #imageUrl and shows preview) ===
-          try {
-            let imageUrl = cloudResp.secure_url || cloudResp.url || "";
-            if(!imageUrl && cloudResp.public_id){
-              const fmt = cloudResp.format || "jpg";
-              imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${encodeURIComponent(cloudResp.public_id)}.${fmt}`;
-              log("built imageUrl from public_id:", imageUrl);
-            }
-            if(!imageUrl) throw new Error("No image URL in Cloudinary response. Keys: " + Object.keys(cloudResp).join(","));
-            // set the input and preview
-            if(imageUrlInput) imageUrlInput.value = imageUrl;
-            showPreview(imageUrl);
-            if(uploadStatus) uploadStatus.textContent = "Uploaded ✓";
-            log("Upload success, imageUrl=", imageUrl);
-          } catch(handleErr){
-            // If handling fails, show error and fallback to data URL preview
-            console.warn("cloudResp handling failed:", handleErr);
-            // fallback to data URL preview
-            const reader = new FileReader();
-            await new Promise((resolve) => {
-              reader.onload = () => {
-                const dataUrl = reader.result;
-                if(imageUrlInput) imageUrlInput.value = dataUrl;
-                showPreview(dataUrl);
-                if(uploadStatus) uploadStatus.textContent = "Preview ready (data URL)";
-                resolve();
-              };
-              reader.onerror = () => { if(uploadStatus) uploadStatus.textContent = "Upload failed"; resolve(); };
-              reader.readAsDataURL(blob);
-            });
+          // robustly extract URL
+          let imageUrl = cloudResp.secure_url || cloudResp.url || "";
+          if(!imageUrl && cloudResp.public_id){
+            const fmt = cloudResp.format || "jpg";
+            imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${encodeURIComponent(cloudResp.public_id)}.${fmt}`;
+            log("built imageUrl from public_id:", imageUrl);
           }
-          // === END cloudResp handling ===
-
+          if(!imageUrl) throw new Error("No image URL in Cloudinary response. Keys: " + Object.keys(cloudResp).join(","));
+          if(imageUrlInput) imageUrlInput.value = imageUrl;
+          showPreview(imageUrl);
+          if(uploadStatus) uploadStatus.textContent = "Uploaded ✓";
         } catch(cloudErr){
-          // Cloudinary upload failed; fallback to local data URL preview so user has something
           console.error("Cloudinary upload failed:", cloudErr);
+          // fallback to data URL preview for user convenience
           const fr = new FileReader();
           await new Promise((resolve) => {
             fr.onload = () => {
@@ -173,7 +151,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ---------- helper fetch with small retry ---------- */
+  /* small retry fetch */
   async function simpleFetch(url, opts={}, retries=FETCH_RETRIES){
     let lastErr = null;
     for(let i=0;i<retries;i++){
@@ -189,7 +167,7 @@ document.addEventListener("DOMContentLoaded", () => {
     throw lastErr || new Error("Fetch failed");
   }
 
-  /* ---------- fetchItems ---------- */
+  /* fetch items */
   async function fetchItems(){
     if(!itemsGrid) return;
     itemsGrid.innerHTML = '<div class="muted" style="padding:12px">Loading items...</div>';
@@ -197,10 +175,8 @@ document.addEventListener("DOMContentLoaded", () => {
       if(!SHEET_API_URL) throw new Error("SHEET_API_URL not set");
       const res = await simpleFetch(SHEET_API_URL + '?action=getItems', { cache:'no-cache', mode:'cors' });
       const text = await res.text();
-
-      // detect HTML sign-in page (common Apps Script problem)
       if (/<html|<!doctype html/i.test(text.slice(0,200))) {
-        throw new Error("Server returned HTML (likely login/consent). Ensure Apps Script is deployed as 'Execute as: Me' and 'Anyone, even anonymous', or use your Worker proxy.");
+        throw new Error("Server returned HTML (login/consent). Ensure Apps Script is deployed as 'Execute as: Me' and 'Anyone, even anonymous'.");
       }
       const json = JSON.parse(text);
       const rawItems = Array.isArray(json) ? json : (json.items || []);
@@ -225,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  /* ---------- render helpers ---------- */
+  /* render helpers */
   function cardHtml(item){
     const img = item.imageUrl ? `<img loading="lazy" src="${escapeHtml(sanitizeUrl(item.imageUrl))}" alt="${escapeHtml(item.title||'item')}">` : '<div class="placeholder" style="width:120px;height:80px;background:#f4f6f8;border-radius:6px"></div>';
     const tag = (item.type && String(item.type).toLowerCase()==="found") ? '<span class="tag found">Found</span>' : '<span class="tag lost">Lost</span>';
@@ -249,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ---------- submit handler (reportedDate auto) ---------- */
+  /* submit handler */
   if(formEl){
     try { const clone = formEl.cloneNode(true); formEl.parentNode.replaceChild(clone, formEl); window.formEl = clone; } catch(e){ window.formEl = formEl; }
     window.formEl.addEventListener('submit', async (ev) => {
@@ -283,7 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const text = await res.text();
         log("Submit raw response", text.slice(0,400));
         if (/<html|<!doctype html/i.test(text.slice(0,200))) {
-          throw new Error("Server returned HTML (likely login/consent). Ensure Apps Script is deployed as 'Execute as: Me' and 'Who has access: Anyone, even anonymous', or use your Worker proxy.");
+          throw new Error("Server returned HTML (likely login/consent). Ensure Apps Script is deployed as 'Execute as: Me' and 'Who has access: Anyone, even anonymous'.");
         }
         const json = JSON.parse(text);
         if(!json || (json.success !== true && json.success !== 'true')) throw new Error('Server error: ' + (json.message || JSON.stringify(json)));

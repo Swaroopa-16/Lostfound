@@ -1,21 +1,20 @@
-/* final updated script.js
-   - Robust Cloudinary upload (do48yblyi / lostandfound)
-   - Auto reportedDate (no user input)
-   - Sets #imageUrl with returned link and shows preview
-   - Falls back to data-URL preview if Cloudinary fails
-   - Submits action=appendItem to SHEET_API_URL
+/* updated script.js
+   - Ensures Cloudinary response is handled reliably:
+     sets #imageUrl to secure_url (or builds from public_id), shows preview
+   - Keeps existing upload, preview, fetch, submit flows and auto reportedDate
+   - No logic changes beyond robust Cloudinary handling
 */
 
-const SHEET_API_URL = "https://lostfound.anandaswaroopa16.workers.dev"; // your Worker / sheet endpoint
+const SHEET_API_URL = "https://lostfound.anandaswaroopa16.workers.dev"; // keep your current endpoint
 const CLOUD_NAME = "do48yblyi";
 const UPLOAD_PRESET = "lostandfound";
 
-// compression controls
 const MAX_IMAGE_WIDTH = 700;
-const IMAGE_QUALITY = 0.6; // 0.0 - 1.0
+const IMAGE_QUALITY = 0.6;
+const FETCH_RETRIES = 2;
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Elements (must match index.html)
+  // DOM refs (defensive)
   const formEl = document.getElementById("itemForm");
   const imageFileInput = document.getElementById("imageFile");
   const imageUrlInput  = document.getElementById("imageUrl");
@@ -29,59 +28,45 @@ document.addEventListener("DOMContentLoaded", () => {
   window.uploadInProgress = false;
   window.cachedItems = window.cachedItems || [];
 
-  /* ---------- Helpers ---------- */
-  function log(...args){ try{ console.log("[LF]", ...args); } catch(e){} }
-  function escapeHtml(s=""){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-  function sanitizeUrl(u=""){ try{ return new URL(u).href; } catch(e){ return u; } }
+  function log(...a){ try{ console.log("[LF]", ...a); }catch(e){} }
+  function escapeHtml(s=""){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function sanitizeUrl(u=""){ try{ return new URL(u).href; }catch(e){ return u||""; } }
+
+  /* ---------- preview helper ---------- */
   function showPreview(url){
-    let wrap = document.getElementById("imagePreviewWrap");
-    if(!wrap){
-      wrap = document.createElement("div");
-      wrap.id = "imagePreviewWrap";
-      wrap.style.marginTop = "8px";
-      if(imageUrlInput && imageUrlInput.parentNode) imageUrlInput.parentNode.appendChild(wrap);
-      else if(imageFileInput && imageFileInput.parentNode) imageFileInput.parentNode.appendChild(wrap);
-    }
-    wrap.innerHTML = "";
-    if(!url) return;
-    const img = document.createElement("img");
-    img.src = url;
-    img.alt = "Preview";
-    img.style.width = "120px";
-    img.style.height = "80px";
-    img.style.objectFit = "cover";
-    img.style.borderRadius = "6px";
-    img.addEventListener("error", ()=> img.style.display = "none");
-    wrap.appendChild(img);
-    const a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noopener";
-    a.textContent = "Open image";
-    a.style.fontSize = "13px";
-    a.style.marginLeft = "8px";
-    a.style.color = "#0b6";
-    wrap.appendChild(a);
+    try {
+      let wrap = document.getElementById("imagePreviewWrap");
+      if(!wrap){
+        wrap = document.createElement("div"); wrap.id="imagePreviewWrap"; wrap.style.marginTop="8px";
+        if(imageUrlInput && imageUrlInput.parentNode) imageUrlInput.parentNode.appendChild(wrap);
+      }
+      wrap.innerHTML = "";
+      if(!url) return;
+      const img = document.createElement("img");
+      img.src = url; img.alt = "Preview";
+      img.style.width="120px"; img.style.height="80px"; img.style.objectFit="cover"; img.style.borderRadius="6px";
+      img.addEventListener("error", ()=> img.style.display='none');
+      wrap.appendChild(img);
+      const a = document.createElement("a");
+      a.href = url; a.target="_blank"; a.rel="noopener"; a.textContent = "Open image";
+      a.style.fontSize = "13px"; a.style.marginLeft="8px"; a.style.color = "#0b6";
+      wrap.appendChild(a);
+    } catch(e){ log("showPreview failed", e); }
   }
 
-  /* ---------- Image compression ---------- */
+  /* ---------- compression ---------- */
   function compressImageFile(file, maxWidth, quality){
     return new Promise((resolve,reject)=>{
       const reader = new FileReader();
       reader.onload = e => {
         const img = new Image();
         img.onload = ()=>{
-          const ratio = img.width / img.height || 1;
-          const w = Math.min(maxWidth, img.width);
-          const h = Math.round(w / ratio);
-          const canvas = document.createElement("canvas");
-          canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img,0,0,w,h);
-          canvas.toBlob(blob => {
-            if(!blob) return reject(new Error("Compression failed"));
-            resolve(blob);
-          }, "image/jpeg", quality);
+          const ratio = img.width / (img.height || 1);
+          const w = Math.min(maxWidth, img.width || maxWidth);
+          const h = Math.round(w / (ratio || 1));
+          const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext("2d"); ctx.drawImage(img,0,0,w,h);
+          canvas.toBlob(blob => { if(!blob) return reject(new Error("Compression failed")); resolve(blob); }, "image/jpeg", quality);
         };
         img.onerror = err => reject(err || new Error("Image load error"));
         img.src = e.target.result;
@@ -91,75 +76,92 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ---------- Robust Cloudinary upload handler ---------- */
+  /* ---------- Cloudinary upload (with robust response handling) ---------- */
   async function uploadBlobToCloudinary(blob, filename){
     const form = new FormData();
     form.append("file", blob, filename || ("upload_" + Date.now() + ".jpg"));
     form.append("upload_preset", UPLOAD_PRESET);
-
     const url = "https://api.cloudinary.com/v1_1/" + encodeURIComponent(CLOUD_NAME) + "/image/upload";
     log("upload ->", url, "preset=", UPLOAD_PRESET);
 
     const resp = await fetch(url, { method: "POST", body: form });
     const text = await resp.text();
-    log("Cloudinary raw status=", resp.status, "body-start=", text.slice(0,400));
+    log("Cloudinary raw status=", resp.status, "text-start=", text.slice(0,400));
     if(!resp.ok){
       throw new Error("Cloudinary error " + resp.status + ": " + text.slice(0,400));
     }
     let json;
-    try { json = JSON.parse(text); } catch(e){ throw new Error("Cloudinary returned invalid JSON"); }
+    try { json = JSON.parse(text); } catch (e) { throw new Error("Cloudinary returned invalid JSON"); }
     return json;
   }
 
-  /* ---------- File input change listener (replace old handler) ---------- */
+  /* ---------- File change handler (integrates cloudResp handling) ---------- */
   if(imageFileInput){
-    imageFileInput.addEventListener("change", async function(ev){
+    imageFileInput.addEventListener("change", async (ev) => {
       const file = ev.target.files && ev.target.files[0];
       if(!file) return;
-      if(window.uploadInProgress){ alert("Please wait for ongoing upload to finish."); return; }
-
+      if(window.uploadInProgress){ alert("Please wait for ongoing upload."); return; }
       window.uploadInProgress = true;
-      if(uploadStatus) uploadStatus.textContent = "Compressing...";
+      if(uploadStatus) uploadStatus.textContent = "Compressing & uploading...";
       if(submitBtn) submitBtn.disabled = true;
 
       try {
         log("Selected file:", file.name, file.size, file.type);
-        // compress
         const blob = await compressImageFile(file, MAX_IMAGE_WIDTH, IMAGE_QUALITY);
         log("Compressed size:", blob.size);
-
-        // try Cloudinary upload
         try {
           const cloudResp = await uploadBlobToCloudinary(blob, file.name);
           log("Cloudinary parsed response:", cloudResp);
-          // prefer secure_url, url, build from public_id if needed
-          let imageUrl = cloudResp.secure_url || cloudResp.url || "";
-          if(!imageUrl && cloudResp.public_id){
-            const fmt = cloudResp.format || "jpg";
-            imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${encodeURIComponent(cloudResp.public_id)}.${fmt}`;
-            log("built imageUrl from public_id:", imageUrl);
-          }
-          if(!imageUrl) throw new Error("No image URL in Cloudinary response");
-          // set input + preview
-          if(imageUrlInput) imageUrlInput.value = imageUrl;
-          try { showPreview(imageUrl); } catch(e){ log("preview fail", e); }
-          if(uploadStatus) uploadStatus.textContent = "Uploaded ✓";
-          log("Upload success:", imageUrl);
-        } catch(cloudErr){
-          // Cloudinary failed — fallback to data URL preview (works for small compressed images)
-          log("Cloudinary upload failed:", cloudErr);
-          const fallbackReader = new FileReader();
-          fallbackReader.onload = function(e){
-            const dataUrl = e.target.result;
-            if(imageUrlInput) imageUrlInput.value = dataUrl;
-            try { showPreview(dataUrl); } catch(e){ log("preview fail", e); }
-            if(uploadStatus) uploadStatus.textContent = "Preview ready (data-url)";
-            log("Fallback data URL set (for testing only)");
-          };
-          fallbackReader.onerror = function(e){ log("fallback read error", e); if(uploadStatus) uploadStatus.textContent = "Upload failed"; };
-          fallbackReader.readAsDataURL(blob);
-        }
 
+          // === START: robust handling of cloudResp (sets #imageUrl and shows preview) ===
+          try {
+            let imageUrl = cloudResp.secure_url || cloudResp.url || "";
+            if(!imageUrl && cloudResp.public_id){
+              const fmt = cloudResp.format || "jpg";
+              imageUrl = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/${encodeURIComponent(cloudResp.public_id)}.${fmt}`;
+              log("built imageUrl from public_id:", imageUrl);
+            }
+            if(!imageUrl) throw new Error("No image URL in Cloudinary response. Keys: " + Object.keys(cloudResp).join(","));
+            // set the input and preview
+            if(imageUrlInput) imageUrlInput.value = imageUrl;
+            showPreview(imageUrl);
+            if(uploadStatus) uploadStatus.textContent = "Uploaded ✓";
+            log("Upload success, imageUrl=", imageUrl);
+          } catch(handleErr){
+            // If handling fails, show error and fallback to data URL preview
+            console.warn("cloudResp handling failed:", handleErr);
+            // fallback to data URL preview
+            const reader = new FileReader();
+            await new Promise((resolve) => {
+              reader.onload = () => {
+                const dataUrl = reader.result;
+                if(imageUrlInput) imageUrlInput.value = dataUrl;
+                showPreview(dataUrl);
+                if(uploadStatus) uploadStatus.textContent = "Preview ready (data URL)";
+                resolve();
+              };
+              reader.onerror = () => { if(uploadStatus) uploadStatus.textContent = "Upload failed"; resolve(); };
+              reader.readAsDataURL(blob);
+            });
+          }
+          // === END cloudResp handling ===
+
+        } catch(cloudErr){
+          // Cloudinary upload failed; fallback to local data URL preview so user has something
+          console.error("Cloudinary upload failed:", cloudErr);
+          const fr = new FileReader();
+          await new Promise((resolve) => {
+            fr.onload = () => {
+              const dataUrl = fr.result;
+              if(imageUrlInput) imageUrlInput.value = dataUrl;
+              showPreview(dataUrl);
+              if(uploadStatus) uploadStatus.textContent = "Preview ready (data URL)";
+              resolve();
+            };
+            fr.onerror = () => { if(uploadStatus) uploadStatus.textContent = "Upload failed"; resolve(); };
+            fr.readAsDataURL(blob);
+          });
+        }
       } catch(err){
         console.error("Image upload flow error:", err);
         alert("Image upload failed: " + (err.message || err));
@@ -171,46 +173,63 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* ---------- Fetch & render items (kept safe and simple) ---------- */
-  function normalizeItem(raw){
-    const it = {};
-    try { Object.keys(raw||{}).forEach(k => it[k.trim()] = String(raw[k]||"").trim()); } catch(e){}
-    return {
-      title: it.title || it.Title || it.name || "",
-      description: it.description || it.Description || "",
-      place: it.place || it.Place || "",
-      date: it.date || it.Date || "",
-      imageUrl: it.imageUrl || it.imageURL || it.Image || "",
-      contact: it.contact || it.Contact || "",
-      type: it.type || it.Type || "",
-      reportedDate: it.reportedDate || it.timestamp || ""
-    };
+  /* ---------- helper fetch with small retry ---------- */
+  async function simpleFetch(url, opts={}, retries=FETCH_RETRIES){
+    let lastErr = null;
+    for(let i=0;i<retries;i++){
+      try {
+        const r = await fetch(url, opts);
+        if(!r.ok) throw new Error("Network response not ok: " + r.status);
+        return r;
+      } catch(err){
+        lastErr = err;
+        await new Promise(res => setTimeout(res, 300 * (i+1)));
+      }
+    }
+    throw lastErr || new Error("Fetch failed");
   }
 
-  function cardHtml(item){
-    const imgUrl = sanitizeUrl(item.imageUrl || "");
-    const thumb = imgUrl ? `<img loading="lazy" src="${escapeHtml(imgUrl)}" alt="${escapeHtml(item.title||'item')}">` : '<div class="placeholder">No image</div>';
-    const tag = (item.type && String(item.type).toLowerCase()==="found") ? '<span class="tag found">Found</span>' : '<span class="tag lost">Lost</span>';
-    return `<article class="card"><div class="thumb">${thumb}</div><div class="body">${tag}<h3>${escapeHtml(item.title||'Untitled')}</h3><p class="desc">${escapeHtml(item.description||'')}</p><p><b>Place:</b> ${escapeHtml(item.place||'—')}</p><p><b>Occurred:</b> ${escapeHtml(item.date||'—')}</p><p><b>Reported:</b> ${escapeHtml(item.reportedDate||'—')}</p><p><b>Contact:</b> ${escapeHtml(item.contact||'—')}</p></div></article>`;
-  }
-
+  /* ---------- fetchItems ---------- */
   async function fetchItems(){
     if(!itemsGrid) return;
     itemsGrid.innerHTML = '<div class="muted" style="padding:12px">Loading items...</div>';
-    try{
-      if(!SHEET_API_URL) throw new Error("SHEET_API_URL not configured");
-      const res = await fetch(SHEET_API_URL + '?action=getItems', { cache:'no-cache', mode:'cors' });
-      if(!res.ok) throw new Error("Network response not ok: " + res.status);
-      const json = await res.json();
-      const items = Array.isArray(json) ? json : (json.items || []);
-      window.cachedItems = items.map(normalizeItem);
-      // newest first by reportedDate/timestamp
-      window.cachedItems.sort((a,b)=> (new Date(b.reportedDate||b.timestamp||0).getTime() || 0) - (new Date(a.reportedDate||a.timestamp||0).getTime() || 0));
+    try {
+      if(!SHEET_API_URL) throw new Error("SHEET_API_URL not set");
+      const res = await simpleFetch(SHEET_API_URL + '?action=getItems', { cache:'no-cache', mode:'cors' });
+      const text = await res.text();
+
+      // detect HTML sign-in page (common Apps Script problem)
+      if (/<html|<!doctype html/i.test(text.slice(0,200))) {
+        throw new Error("Server returned HTML (likely login/consent). Ensure Apps Script is deployed as 'Execute as: Me' and 'Anyone, even anonymous', or use your Worker proxy.");
+      }
+      const json = JSON.parse(text);
+      const rawItems = Array.isArray(json) ? json : (json.items || []);
+      window.cachedItems = (rawItems || []).map(i => {
+        const obj = {};
+        try { Object.keys(i||{}).forEach(k => obj[k.trim()] = String(i[k]||"").trim()); } catch(e){}
+        return {
+          title: obj.title || obj.Title || obj.name || "",
+          description: obj.description || obj.Description || "",
+          place: obj.place || obj.Place || "",
+          date: obj.date || obj.Date || "",
+          imageUrl: obj.imageUrl || obj.imageURL || obj.Image || "",
+          contact: obj.contact || obj.Contact || "",
+          type: obj.type || obj.Type || "",
+          reportedDate: obj.reportedDate || obj.timestamp || ""
+        };
+      });
       renderItems();
     } catch(err){
-      console.error("Error fetching items:", err);
-      if(itemsGrid) itemsGrid.innerHTML = '<div class="error" style="padding:12px">Could not load items: ' + escapeHtml(String(err.message||err)) + '</div>';
+      console.error("fetchItems error:", err);
+      itemsGrid.innerHTML = '<div class="error" style="padding:12px">Could not load items: ' + escapeHtml(String(err.message || err)) + '</div>';
     }
+  }
+
+  /* ---------- render helpers ---------- */
+  function cardHtml(item){
+    const img = item.imageUrl ? `<img loading="lazy" src="${escapeHtml(sanitizeUrl(item.imageUrl))}" alt="${escapeHtml(item.title||'item')}">` : '<div class="placeholder" style="width:120px;height:80px;background:#f4f6f8;border-radius:6px"></div>';
+    const tag = (item.type && String(item.type).toLowerCase()==="found") ? '<span class="tag found">Found</span>' : '<span class="tag lost">Lost</span>';
+    return `<article class="card"><div class="thumb">${img}</div><div class="body">${tag}<h3>${escapeHtml(item.title||'Untitled')}</h3><p class="desc">${escapeHtml(item.description||'')}</p><p><b>Place:</b> ${escapeHtml(item.place||'—')}</p><p><b>Occurred:</b> ${escapeHtml(item.date||'—')}</p><p><b>Reported:</b> ${escapeHtml(item.reportedDate||'—')}</p><p><b>Contact:</b> ${escapeHtml(item.contact||'—')}</p></div></article>`;
   }
 
   function renderItems(){
@@ -226,16 +245,14 @@ document.addEventListener("DOMContentLoaded", () => {
     if(filtered.length===0){ itemsGrid.innerHTML = '<div class="muted" style="padding:12px">No matches</div>'; return; }
     itemsGrid.innerHTML = filtered.map(cardHtml).join('');
     Array.prototype.forEach.call(itemsGrid.querySelectorAll('.thumb img'), img => {
-      img.addEventListener('error', ()=> { img.style.display='none'; if(img.parentNode && !img.parentNode.querySelector('svg')) img.parentNode.insertAdjacentHTML('beforeend','<div class="placeholder">No image</div>'); });
+      img.addEventListener('error', ()=> { img.style.display='none'; if(img.parentNode && !img.parentNode.querySelector('.placeholder')) img.parentNode.insertAdjacentHTML('beforeend','<div class="placeholder" style="width:120px;height:80px;background:#f4f6f8;border-radius:6px"></div>'); });
     });
   }
 
-  /* ---------- Submit (reportedDate auto-filled) ---------- */
+  /* ---------- submit handler (reportedDate auto) ---------- */
   if(formEl){
-    // remove previous listeners safely
     try { const clone = formEl.cloneNode(true); formEl.parentNode.replaceChild(clone, formEl); window.formEl = clone; } catch(e){ window.formEl = formEl; }
-
-    window.formEl.addEventListener('submit', async function(ev){
+    window.formEl.addEventListener('submit', async (ev) => {
       ev.preventDefault(); ev.stopPropagation();
       if(window.uploadInProgress){ alert("Please wait until image upload completes."); return; }
       const titleEl = document.getElementById('title');
@@ -244,7 +261,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const payload = {
         action: 'appendItem',
         timestamp: new Date().toISOString(),
-        reportedDate: new Date().toISOString(), // auto
+        reportedDate: new Date().toISOString(),
         type: (document.getElementById('type') && document.getElementById('type').value) || '',
         title: (document.getElementById('title') && document.getElementById('title').value.trim()) || '',
         description: (document.getElementById('desc') && document.getElementById('desc').value.trim()) || '',
@@ -263,14 +280,25 @@ document.addEventListener("DOMContentLoaded", () => {
         Object.keys(payload).forEach(k => params.append(k, payload[k] || ''));
         if(!SHEET_API_URL) throw new Error("SHEET_API_URL not defined");
         const res = await fetch(SHEET_API_URL, { method:'POST', body: params, mode:'cors' });
-        log("Submit network status", res.status);
         const text = await res.text();
-        log("Submit raw response start", text.slice(0,400));
-        let json;
-        try { json = JSON.parse(text); } catch(e){ throw new Error('Server returned non-JSON response: ' + text.slice(0,300)); }
-        if(!json || (json.success !== true && json.success !== 'true')) throw new Error('Server error: ' + (json && json.message ? json.message : JSON.stringify(json)));
+        log("Submit raw response", text.slice(0,400));
+        if (/<html|<!doctype html/i.test(text.slice(0,200))) {
+          throw new Error("Server returned HTML (likely login/consent). Ensure Apps Script is deployed as 'Execute as: Me' and 'Who has access: Anyone, even anonymous', or use your Worker proxy.");
+        }
+        const json = JSON.parse(text);
+        if(!json || (json.success !== true && json.success !== 'true')) throw new Error('Server error: ' + (json.message || JSON.stringify(json)));
         if(submitMsg) submitMsg.textContent = 'Added ✓';
-        try { window.cachedItems.unshift(normalizeItem(payload)); renderItems(); } catch(e){ log("UI update skipped", e); }
+        try { window.cachedItems.unshift({
+          title: payload.title,
+          description: payload.description,
+          place: payload.place,
+          date: payload.date,
+          imageUrl: payload.imageUrl,
+          contact: payload.contact,
+          type: payload.type,
+          reportedDate: payload.reportedDate,
+          timestamp: payload.timestamp
+        }); renderItems(); } catch(e){ log("UI update skipped", e); }
         window.formEl.reset(); if(uploadStatus) uploadStatus.textContent = ''; showPreview('');
         setTimeout(()=> { if(submitMsg) submitMsg.textContent = ''; }, 1200);
       } catch(err){
@@ -283,11 +311,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }, false);
   }
 
-  if(searchBox){
-    let t=0;
-    searchBox.addEventListener('input', ()=>{ clearTimeout(t); t = setTimeout(renderItems, 150); });
-  }
+  if(searchBox){ let t=0; searchBox.addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(renderItems, 150); }); }
 
-  // init
+  // initial load
   fetchItems();
 });

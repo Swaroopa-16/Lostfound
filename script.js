@@ -1,14 +1,11 @@
 /* final script.js
-   - Cloudinary upload (client-side)
-   - Auto reportedDate
-   - Submit -> Apps Script (SHEET_API_URL)
-   - Fetch items and render
-   - Be sure to replace SHEET_API_URL with your final script.googleusercontent.com URL
+   - Replace SHEET_API_URL value with final script.googleusercontent.com URL from Apps Script deploy
+   - Cloudinary settings: CLOUD_NAME and UPLOAD_PRESET set below (do not change other logic)
 */
 
-const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyWvs4CwAnUyrqV4NWk6TBxMiHDlyJXcR8yE_bs8b3lksE3-G9FjFytLjhbbECz-4gLQA/exec"; // <<-- REPLACE me
-const CLOUD_NAME = "do48yblyi";      // your cloudinary cloud name
-const UPLOAD_PRESET = "lostandfound"; // your unsigned preset name
+const SHEET_API_URL = "PASTE_FINAL_SCRIPT_URL_HERE"; // <-- REPLACE with final script.googleusercontent.com URL
+const CLOUD_NAME = "do48yblyi";
+const UPLOAD_PRESET = "lostandfound";
 
 const MAX_IMAGE_WIDTH = 700;
 const IMAGE_QUALITY = 0.6;
@@ -26,7 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const searchBox      = document.getElementById("searchBox");
   const logoImg        = document.getElementById("cmrit_logo_img");
 
-  // try to load logo from assets (safe)
   try { if (logoImg) logoImg.src = './assets/cmrit_logo.webp'; } catch(e){}
 
   window.uploadInProgress = false;
@@ -36,7 +32,6 @@ document.addEventListener("DOMContentLoaded", () => {
   function escapeHtml(s=""){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
   function sanitizeUrl(u=""){ try{ return new URL(u).href; }catch(e){ return u||""; } }
 
-  /* preview helper */
   function showPreview(url){
     try {
       let wrap = document.getElementById("imagePreviewWrap");
@@ -58,7 +53,6 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch(e){ log("showPreview failed", e); }
   }
 
-  /* image compression */
   function compressImageFile(file, maxWidth, quality){
     return new Promise((resolve,reject)=>{
       const reader = new FileReader();
@@ -80,7 +74,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* upload to Cloudinary */
   async function uploadBlobToCloudinary(blob, filename){
     const form = new FormData();
     form.append("file", blob, filename || ("upload_" + Date.now() + ".jpg"));
@@ -98,7 +91,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return json;
   }
 
-  /* file input handler */
   if(imageFileInput){
     imageFileInput.addEventListener("change", async (ev) => {
       const file = ev.target.files && ev.target.files[0];
@@ -113,7 +105,6 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
           const cloudResp = await uploadBlobToCloudinary(blob, file.name);
           log("Cloudinary parsed response:", cloudResp);
-          // robustly extract URL
           let imageUrl = cloudResp.secure_url || cloudResp.url || "";
           if(!imageUrl && cloudResp.public_id){
             const fmt = cloudResp.format || "jpg";
@@ -126,7 +117,6 @@ document.addEventListener("DOMContentLoaded", () => {
           if(uploadStatus) uploadStatus.textContent = "Uploaded ✓";
         } catch(cloudErr){
           console.error("Cloudinary upload failed:", cloudErr);
-          // fallback to data URL preview for user convenience
           const fr = new FileReader();
           await new Promise((resolve) => {
             fr.onload = () => {
@@ -151,7 +141,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* small retry fetch */
   async function simpleFetch(url, opts={}, retries=FETCH_RETRIES){
     let lastErr = null;
     for(let i=0;i<retries;i++){
@@ -167,7 +156,6 @@ document.addEventListener("DOMContentLoaded", () => {
     throw lastErr || new Error("Fetch failed");
   }
 
-  /* fetch items */
   async function fetchItems(){
     if(!itemsGrid) return;
     itemsGrid.innerHTML = '<div class="muted" style="padding:12px">Loading items...</div>';
@@ -201,7 +189,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  /* render helpers */
   function cardHtml(item){
     const img = item.imageUrl ? `<img loading="lazy" src="${escapeHtml(sanitizeUrl(item.imageUrl))}" alt="${escapeHtml(item.title||'item')}">` : '<div class="placeholder" style="width:120px;height:80px;background:#f4f6f8;border-radius:6px"></div>';
     const tag = (item.type && String(item.type).toLowerCase()==="found") ? '<span class="tag found">Found</span>' : '<span class="tag lost">Lost</span>';
@@ -225,7 +212,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  /* submit handler */
   if(formEl){
     try { const clone = formEl.cloneNode(true); formEl.parentNode.replaceChild(clone, formEl); window.formEl = clone; } catch(e){ window.formEl = formEl; }
     window.formEl.addEventListener('submit', async (ev) => {
@@ -289,6 +275,5 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if(searchBox){ let t=0; searchBox.addEventListener('input', ()=>{ clearTimeout(t); t=setTimeout(renderItems, 150); }); }
 
-  // initial load
   fetchItems();
 });

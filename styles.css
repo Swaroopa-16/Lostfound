@@ -2,7 +2,6 @@
   --bg: linear-gradient(180deg,#f6fbff 0%, #eef7ff 100%);
   --card: #ffffff;
   --muted: #6b7280;
-  --accent: #0b6;
   --accent-2: #0b83ff;
   --shadow: 0 6px 18px rgba(14,30,37,0.08);
   --radius: 12px;
@@ -14,20 +13,17 @@
 html,body{height:100%; margin:0; background:var(--bg); color:#0f1724; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale}
 .wrap{max-width:1100px; margin:26px auto; padding:18px;}
 
-/* header */
 .site-header{display:flex; align-items:center; gap:16px; margin-bottom:18px}
 .logo img{width:64px; height:64px; object-fit:contain; border-radius:10px; box-shadow:var(--shadow); background:#fff; padding:6px}
 .brand .title{margin:0; font-size:20px; letter-spacing:0.2px}
 .brand .subtitle{margin:2px 0 0; color:var(--muted); font-size:13px}
 
-/* layout */
 .container{display:grid; grid-template-columns: 360px 1fr; gap:20px; align-items:start}
 .panel{background:var(--card); border-radius:12px; padding:16px; box-shadow:var(--shadow)}
 .panel-head{margin-bottom:8px}
 .panel-title{margin:0; font-size:16px}
 .panel-sub{margin:4px 0 0; color:var(--muted); font-size:13px}
 
-/* form */
 .item-form .field{margin-bottom:12px}
 .field-row{display:flex; gap:10px}
 .field-col{flex:1}
@@ -38,7 +34,6 @@ input[type="text"], input[type="url"], input[type="date"], select, textarea{
 textarea{min-height:80px; resize:vertical}
 .muted{color:var(--muted); font-size:13px}
 
-/* buttons */
 .btn-primary{
   background: linear-gradient(90deg,var(--accent-2), #07b78d);
   color:white; padding:10px 14px; border-radius:10px; border: none; cursor:pointer; font-weight:700;
@@ -46,7 +41,6 @@ textarea{min-height:80px; resize:vertical}
 }
 .btn-primary:disabled{opacity:0.6; cursor:default}
 
-/* items grid */
 .search{width:100%; padding:10px 12px; margin:12px 0 14px; border-radius:10px; border:1px solid #e6eef7; background:#fff}
 .items-grid{display:grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:14px}
 .card{display:flex; gap:12px; padding:12px; border-radius:10px; align-items:flex-start; border:1px solid #f1f6fb}
@@ -58,10 +52,8 @@ textarea{min-height:80px; resize:vertical}
 .tag.lost{background:#fff0f0; color:#d23}
 .tag.found{background:#eefcf3; color:#0b6}
 
-/* footer */
 .site-footer{margin-top:18px; text-align:center; color:var(--muted); font-size:13px}
 
-/* responsive */
 @media (max-width:880px){
   .container{grid-template-columns:1fr; padding:0}
   .logo img{width:56px;height:56px}

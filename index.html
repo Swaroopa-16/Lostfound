@@ -9,7 +9,10 @@
 <body>
   <div class="wrap">
     <header class="site-header">
-      <div class="logo" id="logoWrap"></div>
+      <div class="logo" id="logoWrap">
+        <!-- Put your logo file in assets/cmrit_logo.webp and it will load -->
+        <img id="cmrit_logo_img" alt="Logo" />
+      </div>
       <div class="brand">
         <h1 class="title">Campus Lost & Found</h1>
         <p class="subtitle">Report & recover items easily</p>
@@ -22,11 +25,10 @@
       <aside class="panel" aria-labelledby="addHeading" id="reportBlock">
         <div class="panel-head">
           <h3 id="addHeading" class="panel-title">Add Lost / Found Item</h3>
-          <p class="panel-sub muted">Quick report </p>
+          <p class="panel-sub muted">Quick report</p>
         </div>
 
         <form id="itemForm" autocomplete="off" class="item-form">
-
           <div class="field-row">
             <div class="field-col">
               <label for="type">Type</label>
@@ -38,12 +40,9 @@
 
             <div class="field-col">
               <label for="date">Occurrence Date</label>
-              <input id="date" name="date" type="date" placeholder="dd-mm-yyyy" />
+              <input id="date" name="date" type="date" />
             </div>
-
-            <!-- ▶️ ADDED FIELD (required for script.js submit handler) -->
-            
-          
+          </div>
 
           <!-- ITEM NAME -->
           <div class="field">

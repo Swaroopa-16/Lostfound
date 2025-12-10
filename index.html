@@ -1,110 +1,108 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Campus Lost & Found</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Campus Lost & Found</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="wrap">
-    <header class="site-header">
-      <div class="logo" id="logoWrap">
-        <!-- Put your logo file in assets/cmrit_logo.webp and it will load -->
-        <img id="cmrit_logo_img" alt="Logo" />
-      </div>
-      <div class="brand">
-        <h1 class="title">Campus Lost & Found</h1>
-        <p class="subtitle">Report & recover items easily</p>
-      </div>
-    </header>
+  <div class="wrap">
+    <header class="site-header">
+      <div class="logo" id="logoWrap">
+                <img id="cmrit_logo_img" alt="Logo" />
+      </div>
+      <div class="brand">
+        <h1 class="title">Campus Lost & Found</h1>
+        <p class="subtitle">Report & recover items easily</p>
+      </div>
+    </header>
 
-    <main class="container">
+    <main class="container">
 
-      <!-- REPORTING BLOCK -->
-      <aside class="panel" aria-labelledby="addHeading" id="reportBlock">
-        <div class="panel-head">
-          <h3 id="addHeading" class="panel-title">Add Lost / Found Item</h3>
-          <p class="panel-sub muted">Quick report</p>
-        </div>
+            <aside class="panel" aria-labelledby="addHeading" id="reportBlock">
+        <div class="panel-head">
+          <h3 id="addHeading" class="panel-title">Add Lost / Found Item</h3>
+          <p class="panel-sub muted">Quick report</p>
+        </div>
 
-        <form id="itemForm" autocomplete="off" class="item-form">
-          <div class="field-row">
-            <div class="field-col">
-              <label for="type">Type</label>
-              <select id="type" name="type">
-                <option>Lost</option>
-                <option>Found</option>
-              </select>
-            </div>
+        <form id="itemForm" autocomplete="off" class="item-form">
+          <div class="field-row">
+            <div class="field-col">
+              <label for="type">Type</label>
+              <select id="type" name="type">
+                <option>Lost</option>
+                <option>Found</option>
+              </select>
+            </div>
 
-            <div class="field-col">
-              <label for="date">Occurrence Date</label>
-              <input id="date" name="date" type="date" />
-            </div>
-          </div>
+            <div class="field-col">
+              <label for="date">Occurrence Date</label>
+              <input id="date" name="date" type="date" />
+            </div>
+          </div>
 
-          <!-- ITEM NAME -->
-          <div class="field">
-            <label for="title">What is the item? <small class="muted">(e.g., Black wallet)</small></label>
-            <input id="title" name="title" type="text" placeholder="Item name (e.g., Wallet, Keys)" required />
-          </div>
+                    <div class="field">
+            <label for="title">What is the item? <small class="muted">(e.g., Black wallet)</small></label>
+            <input id="title" name="title" type="text" placeholder="Item name (e.g., Wallet, Keys)" required />
+          </div>
 
-          <!-- Image uploader + fallback URL -->
-          <div class="field">
-            <label for="imageFile">Image (upload or paste URL)</label>
-            <input id="imageFile" type="file" accept="image/*" />
-            <input id="imageUrl" type="url" placeholder="Or paste public image URL (optional)" />
-            <small class="muted">Upload from device or paste an image URL.</small>
-            <div id="uploadStatus" class="muted" style="margin-top:8px"></div>
-          </div>
+                    <div class="field">
+            <label for="imageFile">Image (upload or paste URL)</label>
+            <input id="imageFile" type="file" accept="image/*" />
+            <input id="imageUrl" type="url" placeholder="Or paste public image URL (optional)" />
+            <small class="muted">Upload from device or paste an image URL.</small>
+            
+             <div id="imagePreviewWrap" style="margin-top:8px"></div>
+            
+             <div id="uploadStatus" class="muted" style="margin-top:8px"></div>
+          </div>
 
-          <div class="field">
-            <label for="desc">Description</label>
-            <textarea id="desc" name="description" placeholder="description: unique marks, brand, colour..."></textarea>
-          </div>
+          <div class="field">
+            <label for="desc">Description</label>
+            <textarea id="desc" name="description" placeholder="description: unique marks, brand, colour..."></textarea>
+          </div>
 
-          <div class="field-row">
-            <div class="field-col">
-              <label for="place">Place (where lost/found)</label>
-              <input id="place" name="place" type="text" placeholder="e.g., Library, Canteen" />
-            </div>
-            <div class="field-col">
-              <label for="contact">Contact (phone / email)</label>
-              <input id="contact" name="contact" type="text" placeholder="Phone or email (for contact)" />
-            </div>
-          </div>
+          <div class="field-row">
+            <div class="field-col">
+              <label for="place">Place (where lost/found)</label>
+              <input id="place" name="place" type="text" placeholder="e.g., Library, Canteen" />
+            </div>
+            <div class="field-col">
+              <label for="contact">Contact (phone / email)</label>
+              <input id="contact" name="contact" type="text" placeholder="Phone or email (for contact)" />
+            </div>
+          </div>
 
-          <div style="display:flex; align-items:center; gap:12px; margin-top:6px;">
-            <button id="submitBtn" type="submit" class="btn-primary">Submit</button>
-            <div id="submitMsg" style="color:var(--muted); font-weight:600"></div>
-          </div>
+          <div style="display:flex; align-items:center; gap:12px; margin-top:6px;">
+            <button id="submitBtn" type="submit" class="btn-primary">Submit</button>
+            <div id="submitMsg" style="color:var(--muted); font-weight:600"></div>
+          </div>
 
-          <p class="muted" style="margin-top:12px; font-size:13px">
-            Avoid sharing sensitive personal information.
-          </p>
-        </form>
-      </aside>
+          <p class="muted" style="margin-top:12px; font-size:13px">
+            Avoid sharing sensitive personal information.
+          </p>
+        </form>
+      </aside>
 
-      <!-- ITEMS -->
-      <section class="panel" aria-labelledby="itemsHeading">
-        <div class="panel-head">
-          <h2 id="itemsHeading" class="panel-title">Available Items</h2>
-          <p class="panel-sub muted">Browse recent lost &amp; found items from the campus community</p>
-        </div>
+            <section class="panel" aria-labelledby="itemsHeading">
+        <div class="panel-head">
+          <h2 id="itemsHeading" class="panel-title">Available Items</h2>
+          <p class="panel-sub muted">Browse recent lost &amp; found items from the campus community</p>
+        </div>
 
-        <input id="searchBox" class="search" placeholder="Search by item, place or contact..." />
-        <div id="itemsGrid" class="items-grid"></div>
-        <div id="itemsEmpty" class="muted empty-note" style="display:none; padding:12px">No items yet.</div>
-      </section>
+        <input id="searchBox" class="search" placeholder="Search by item, place or contact..." />
+        <div id="itemsGrid" class="items-grid"></div>
+        <div id="itemsEmpty" class="muted empty-note" style="display:none; padding:12px">No items yet.</div>
+      </section>
 
-    </main>
+    </main>
 
-    <footer class="site-footer">
-      <div class="footer-inner">Built for campus — Lost & Found</div>
-    </footer>
-  </div>
+    <footer class="site-footer">
+      <div class="footer-inner">Built for campus — Lost & Found</div>
+    </footer>
+  </div>
 
-  <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>

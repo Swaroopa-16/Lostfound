@@ -6,7 +6,7 @@
    - Be sure to replace SHEET_API_URL with your final script.googleusercontent.com URL
 */
 
-const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzw6YVu3-aEfIhBQt1ECFAhgJ1q54k5lBYZmdcwk6yu0hc7dqFTYNnmwhDFjSdrdwJdpw/exec"; // <<-- REPLACE me
+const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyWvs4CwAnUyrqV4NWk6TBxMiHDlyJXcR8yE_bs8b3lksE3-G9FjFytLjhbbECz-4gLQA/exec"; // <<-- REPLACE me
 const CLOUD_NAME = "do48yblyi";      // your cloudinary cloud name
 const UPLOAD_PRESET = "lostandfound"; // your unsigned preset name
 
